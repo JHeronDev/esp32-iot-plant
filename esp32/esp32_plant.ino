@@ -11,7 +11,7 @@
 
 const char* WIFI_SSID = "CFAINSTA_STUDENTS";
 const char* WIFI_PASS = "Cf@InSt@-$tUd3nT";
-const char* MQTT_HOST = "172.16.8.41";
+const char* MQTT_HOST = "172.16.8.1";
 const int   MQTT_PORT = 1883;
 
 const char* TOPIC_TELEMETRY = "tp/esp32/telemetry";
