@@ -2,233 +2,471 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>🌱 ESP32 Plant Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌱 Serre connectée</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* Configuration pour remplir exactement l'écran sans scroll */
-    :root {
-      --bg-dark: #0f172a;
-      --card-bg: #020617;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
-      background: var(--bg-dark);
-      color: #e5e7eb;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-      /* Utilisation du svh pour éviter que la barre d'outil du navigateur ne cache le bas */
-      height: 100svh; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* Empêche le scroll global */
-    }
-
-    h1 { 
-      font-size: 1.2rem; 
-      margin: 10px 0;
-      flex-shrink: 0;
-    }
-
-    /* Les deux conteneurs principaux se partagent l'espace */
-    .card-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 10px;
       overflow: hidden;
     }
 
-    .card {
-      background: var(--card-bg);
-      padding: 15px 10px;
-      border-radius: 15px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    header {
+      background: #1e293b;
+      padding: 1rem;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
 
-    .card.sensors { flex: 2; } /* Prend plus de place pour les cercles */
-    .card.history { flex: 1.5; min-height: 200px; } /* Pour le graphique */
+    h1 { font-size: 1.5rem; font-weight: 600; }
 
-    .sensor-container {
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid #ef4444;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      color: #ef4444;
+    }
+
+    #status.connected {
+      background: rgba(16,185,129,0.1);
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    #status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      overflow: auto;
+    }
+
+    section {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    section:first-of-type {
+      flex-shrink: 0;
+    }
+
+    section:last-of-type {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 300px;
+    }
+
+    h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    #sensors {
       display: grid;
-      grid-template-columns: 1fr 1fr; /* 2 colonnes sur mobile vertical */
-      gap: 10px;
-      justify-items: center;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .sensor-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .indicator {
+      display: flex;
+      justify-content: center;
       align-items: center;
     }
 
-    .sensor-circle {
-      width: 100px; /* Légèrement réduit pour mobile */
-      height: 100px;
-      position: relative;
+    .bubble {
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.02);
+      border: 2px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+      transition: all 0.3s;
+    }
+
+    .bubble.healthy { border-color: #10b981; }
+    .bubble.warning { border-color: #f59e0b; }
+    .bubble.critical { border-color: #ef4444; }
+
+    .bubble label {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .bubble .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .bubble .unit {
+      font-size: 0.65rem;
+      color: #94a3b8;
+    }
+
+    .btn-circle {
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      background: #475569;
+      border: 2px solid #64748b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+      transition: all 0.3s;
       cursor: pointer;
     }
 
-    .sensor-circle svg {
-      width: 100%;
-      height: 100%;
-      transform: rotate(-90deg);
+    .btn-circle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(100,116,139,0.4);
     }
 
-    .sensor-circle circle { fill: none; stroke-width: 10; }
-    .sensor-bg { stroke: #1e293b; }
-    .sensor-progress { transition: stroke-dasharray 0.5s ease; }
-
-    .sensor-value {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 12px;
-      font-weight: bold;
-    }
-    
-    .sensor-label {
-      position: absolute;
-      top: 22%; left: 50%;
-      transform: translateX(-50%);
-      font-size: 8px;
-      color: #94a3b8;
-      text-transform: uppercase;
+    .btn-circle.on {
+      background: #10b981;
+      border-color: #059669;
     }
 
-    .action-title {
-      position: absolute;
-      top: 68%; left: 50%;
-      transform: translateX(-50%);
-      font-size: 8px;
-      color: #64748b;
+    .btn-circle.on:hover {
+      box-shadow: 0 0 20px rgba(16,185,129,0.5);
     }
 
-    .status-indicator {
-      position: absolute;
-      top: 78%; left: 50%;
-      transform: translateX(-50%);
-      font-size: 10px;
-      font-weight: bold;
+    .btn-circle .icon {
+      font-size: 1.5rem;
+      filter: grayscale(100%);
+      opacity: 0.6;
     }
-    .status-indicator.on { color: #10b981; }
-    .status-indicator.off { color: #64748b; }
 
-    h2 { font-size: 1rem; margin: 0 0 10px 0; }
-    
-    /* Ajustement graphique */
-    canvas { max-height: 100% !important; width: 100% !important; }
+    .btn-circle.on .icon {
+      filter: grayscale(0%);
+      opacity: 1;
+    }
 
+    .btn-circle .label {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.7);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .btn-circle.on .label {
+      color: rgba(255,255,255,0.95);
+    }
+
+    #chart-section {
+      flex: 1;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chart-wrapper {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    canvas {
+      max-height: 100% !important;
+      width: 100% !important;
+    }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
 
-<h1>🌿 Serre Connectée</h1>
+<header>
+  <h1>🌱 Serre connectée</h1>
+  <div id="status">Déconnecté</div>
+</header>
 
-<div class="card-container">
-  <div class="card sensors">
-    <div class="sensor-container">
-      <div class="sensor-circle" onclick="toggle('led', 'LED')">
-        <svg><circle class="sensor-bg" cx="50" cy="50" r="42"></circle><circle class="sensor-progress" cx="50" cy="50" r="42" id="lux-progress" stroke-dasharray="0 264"></circle></svg>
-        <div class="sensor-label">LUX</div>
-        <div class="sensor-value" id="lux-val">-</div>
-        <div class="action-title">LUMIÈRE</div>
-        <div class="status-indicator off" id="led-status">OFF</div>
+<main>
+  <section>
+    <h2>Capteurs</h2>
+    <div id="sensors">
+      <!-- Luminosité -->
+      <div class="sensor-item">
+        <div class="indicator">
+          <div class="bubble" id="lux-bubble">
+            <label>Lumi</label>
+            <div class="value" id="lux">-</div>
+            <div class="unit">lux</div>
+          </div>
+        </div>
+        <div class="btn-circle" id="led-btn" onclick="toggle('led', 'LED')">
+          <div class="icon">💡</div>
+          <div class="label">Lumière</div>
+        </div>
       </div>
 
-      <div class="sensor-circle" onclick="toggle('hum', 'HUM')">
-        <svg><circle class="sensor-bg" cx="50" cy="50" r="42"></circle><circle class="sensor-progress" cx="50" cy="50" r="42" id="soil-progress" stroke-dasharray="0 264"></circle></svg>
-        <div class="sensor-label">SOL</div>
-        <div class="sensor-value" id="soil-val">-</div>
-        <div class="action-title">POMPE</div>
-        <div class="status-indicator off" id="hum-status">OFF</div>
+      <!-- Humidité -->
+      <div class="sensor-item">
+        <div class="indicator">
+          <div class="bubble" id="soil-bubble">
+            <label>Humi</label>
+            <div class="value" id="soil">-</div>
+            <div class="unit">%</div>
+          </div>
+        </div>
+        <div class="btn-circle" id="hum-btn" onclick="toggle('hum', 'HUM')">
+          <div class="icon">💧</div>
+          <div class="label">Arrosage</div>
+        </div>
       </div>
 
-      <div class="sensor-circle" onclick="toggle('fan', 'FAN')">
-        <svg><circle class="sensor-bg" cx="50" cy="50" r="42"></circle><circle class="sensor-progress" cx="50" cy="50" r="42" id="co2-progress" stroke-dasharray="0 264"></circle></svg>
-        <div class="sensor-label">CO2</div>
-        <div class="sensor-value" id="co2-val">-</div>
-        <div class="action-title">VENTILO</div>
-        <div class="status-indicator off" id="fan-status">OFF</div>
+      <!-- CO2 -->
+      <div class="sensor-item">
+        <div class="indicator">
+          <div class="bubble" id="co2-bubble">
+            <label>CO2</label>
+            <div class="value" id="co2">-</div>
+            <div class="unit">ppm</div>
+          </div>
+        </div>
+        <div class="btn-circle" id="fan-btn" onclick="toggle('fan', 'FAN')">
+          <div class="icon">🌀</div>
+          <div class="label">Ventilation</div>
+        </div>
       </div>
 
-      <div class="sensor-circle">
-        <svg><circle class="sensor-bg" cx="50" cy="50" r="42"></circle><circle class="sensor-progress" cx="50" cy="50" r="42" id="rssi-progress" stroke-dasharray="0 264"></circle></svg>
-        <div class="sensor-label">WiFi</div>
-        <div class="sensor-value" id="rssi-val">-</div>
-        <div class="action-title">SIGNAL</div>
+      <!-- WiFi (sans bouton) -->
+      <div class="sensor-item">
+        <div class="indicator">
+          <div class="bubble" id="rssi-bubble">
+            <label>WiFi</label>
+            <div class="value" id="rssi">-</div>
+            <div class="unit">dB</div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="card history">
+  <section id="chart-section">
     <h2>📈 Historique</h2>
-    <div style="flex:1; position:relative;">
-      <canvas id="historyChart"></canvas>
+    <div id="chart-wrapper">
+      <canvas id="chart"></canvas>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 
 <script>
-  const socket = io();
-  let historyChart;
-  const CIRCUMFERENCE = 2 * Math.PI * 42; // Rayon ajusté à 42
-
+  const socket = io({ reconnection: true, reconnectionDelay: 1000 });
+  let chart = null;
   let states = { led: false, hum: false, fan: false };
 
-  function updateCircle(id, value, percentage, color, unit, isInteger = false) {
-    const progress = document.getElementById(id + '-progress');
-    const label = document.getElementById(id + '-val');
-    const offset = (percentage / 100) * CIRCUMFERENCE;
-    progress.style.strokeDasharray = `${offset} ${CIRCUMFERENCE}`;
-    progress.style.stroke = color;
-    label.innerText = (isInteger ? Math.round(value) : value.toFixed(1)) + unit;
-  }
-
-  function toggle(type, cmdPrefix) {
-    states[type] = !states[type];
-    const indicator = document.getElementById(type + '-status');
-    indicator.className = 'status-indicator ' + (states[type] ? 'on' : 'off');
-    indicator.innerText = states[type] ? 'ON' : 'OFF';
-    socket.emit('cmd', states[type] ? cmdPrefix + '_ON' : cmdPrefix + '_OFF');
-  }
-
-  socket.on('telemetry', data => {
-    updateCircle('lux', data.luminosite, (Math.log10(data.luminosite + 1) / Math.log10(65001)) * 100, (data.luminosite >= 500 && data.luminosite <= 10000) ? '#10b981' : '#dc2626', "lx");
-    updateCircle('soil', data.humidite_sol, data.humidite_sol, (data.humidite_sol >= 30 && data.humidite_sol <= 70) ? '#10b981' : '#dc2626', "%");
-    updateCircle('co2', data.co2, Math.min(Math.max((data.co2 - 200) / 1300 * 100, 0), 100), (data.co2 >= 400 && data.co2 <= 1200) ? '#10b981' : '#dc2626', "ppm", true);
-    let rssiP = Math.max(0, (data.rssi + 100) / 70 * 100);
-    updateCircle('rssi', data.rssi, rssiP, rssiP > 70 ? '#10b981' : (rssiP > 30 ? '#f59e0b' : '#dc2626'), "dB", true);
+  socket.on('connect', () => {
+    document.getElementById('status').classList.add('connected');
+    document.getElementById('status').textContent = 'Connecté';
   });
 
-  function loadHistory() {
-    fetch('/api/history').then(res => res.json()).then(data => {
-      if (!data || data.length === 0) return;
-      const config = {
-        type: 'line',
-        data: {
-          labels: data.map(d => new Date(d.timestamp).toLocaleTimeString()).reverse(),
-          datasets: [
-            { label: 'Lux', data: data.map(d => d.luminosite).reverse(), borderColor: 'yellow', tension: 0.3, pointRadius: 0 },
-            { label: 'Sol', data: data.map(d => d.humidite_sol).reverse(), borderColor: 'blue', tension: 0.3, pointRadius: 0 },
-            { label: 'CO2', data: data.map(d => d.co2).reverse(), borderColor: 'green', tension: 0.3, pointRadius: 0 }
-          ]
-        },
-        options: { 
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } }, // On cache la légende pour gagner de la place
-          scales: { y: { ticks: { color: '#64748b', font: { size: 9 } } }, x: { display: false } }
-        }
-      };
-      if (historyChart) historyChart.destroy();
-      historyChart = new Chart(document.getElementById('historyChart'), config);
-    });
+  socket.on('disconnect', () => {
+    document.getElementById('status').classList.remove('connected');
+    document.getElementById('status').textContent = 'Déconnecté';
+  });
+
+  function update(id, val, min, max) {
+    const el = document.getElementById(id);
+    const bubble = document.getElementById(id + '-bubble');
+    
+    bubble.classList.remove('healthy', 'warning', 'critical');
+    if (val >= min && val <= max) bubble.classList.add('healthy');
+    else if (Math.abs(val - min) < (max - min) * 0.2 || Math.abs(val - max) < (max - min) * 0.2) bubble.classList.add('warning');
+    else bubble.classList.add('critical');
+    
+    el.textContent = id === 'co2' || id === 'rssi' ? Math.round(val) : val.toFixed(1);
   }
 
-  loadHistory();
-  setInterval(loadHistory, 15000);
+  function toggle(type, cmd) {
+    states[type] = !states[type];
+    const btn = document.getElementById(type + '-btn');
+    if (states[type]) {
+      btn.classList.add('on');
+    } else {
+      btn.classList.remove('on');
+    }
+    socket.emit('cmd', states[type] ? cmd + '_ON' : cmd + '_OFF');
+  }
+
+  socket.on('telemetry', d => {
+    if (!d) return;
+    update('lux', d.luminosite || 0, 500, 10000);
+    update('soil', d.humidite_sol || 0, 30, 70);
+    update('co2', d.co2 || 0, 400, 1200);
+    update('rssi', d.rssi || -100, -70, -50);
+    
+    // Synchroniser les états des boutons
+    if (d.led_on !== undefined) {
+      states.led = d.led_on;
+      const ledBtn = document.getElementById('led-btn');
+      if (d.led_on) ledBtn.classList.add('on');
+      else ledBtn.classList.remove('on');
+    }
+    if (d.fan_on !== undefined) {
+      states.fan = d.fan_on;
+      const fanBtn = document.getElementById('fan-btn');
+      if (d.fan_on) fanBtn.classList.add('on');
+      else fanBtn.classList.remove('on');
+    }
+    if (d.humidifier_on !== undefined) {
+      states.hum = d.humidifier_on;
+      const humBtn = document.getElementById('hum-btn');
+      if (d.humidifier_on) humBtn.classList.add('on');
+      else humBtn.classList.remove('on');
+    }
+  });
+
+  function loadChart() {
+    fetch('/api/history?limit=100')
+      .then(r => r.json())
+      .then(data => {
+        if (!data || data.length === 0) return;
+        
+        // Les données arrivent déjà triées (anciennes à gauche, récentes à droite)
+        const ctx = document.getElementById('chart').getContext('2d');
+        const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+        
+        if (chart) chart.destroy();
+        
+        // Calcul des échelles dynamiques pour chaque axe
+        const luxValues = data.map(d => d.luminosite).filter(v => v);
+        const luxMin = 0;
+        const luxMax = 1000;
+        
+        const humValues = data.map(d => d.humidite_sol).filter(v => v);
+        const humMin = 0;
+        const humMax = 100;
+        
+        const co2Values = data.map(d => d.co2).filter(v => v);
+        const co2Min = 0;
+        const co2Max = 1000;
+        
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Luminosité (lux)',
+                data: data.map(d => d.luminosite),
+                borderColor: '#fbbf24',
+                backgroundColor: 'rgba(251,191,36,0.05)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Humidité (%)',
+                data: data.map(d => d.humidite_sol),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.05)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+              },
+              {
+                label: 'CO2 (ppm)',
+                data: data.map(d => d.co2),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.05)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { left: 0, right: 0 } },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: {
+                display: true,
+                position: 'bottom',
+                labels: { color: '#94a3b8', usePointStyle: true, padding: 10 }
+              },
+              annotation: {
+                drawTime: 'afterDraw'
+              }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                position: 'right',
+                min: 0,
+                max: 1500,
+                ticks: { color: '#94a3b8', font: { weight: 'bold' }, callback: function(value) { return Math.round(value); } },
+                grid: { color: 'rgba(148,163,184,0.1)' }
+              },
+              x: {
+                ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 0 },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              }
+            }
+          },
+          plugins: []
+        });
+      })
+      .catch(err => console.error('Erreur chargement historique:', err));
+  }
+
+  loadChart();
+  setInterval(loadChart, 2000); // Actualisation toutes les 2 secondes
 </script>
 </body>
 </html>

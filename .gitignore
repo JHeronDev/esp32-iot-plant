@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.local
+
+# Node.js
+node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+
+# Docker
+mqtt-docker/mosquitto/data/
+mqtt-docker/mosquitto/log/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
