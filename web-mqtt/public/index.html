@@ -92,9 +92,9 @@
     }
 
     #sensors {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: flex;
       gap: 0.5rem;
+      flex-wrap: nowrap;
     }
 
     .sensor-item {
@@ -102,6 +102,8 @@
       flex-direction: column;
       align-items: center;
       gap: 0.35rem;
+      flex: 1;
+      min-width: 0;
     }
 
     .indicator {
@@ -219,6 +221,105 @@
       font-weight: 600;
       margin-bottom: 1rem;
     }
+
+    /* Login Panel */
+    #login-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      font-size: 0.875rem;
+    }
+
+    #login-panel.authenticated {
+      background: transparent;
+    }
+
+    .login-inputs {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .login-inputs input {
+      flex: 1;
+      padding: 0.5rem;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+    }
+
+    .login-inputs input:focus {
+      outline: none;
+      border-color: #10b981;
+    }
+
+    .login-btn, .logout-btn {
+      padding: 0.5rem 1rem;
+      background: #10b981;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.75rem;
+    }
+
+    .login-btn:hover {
+      background: #059669;
+    }
+
+    .logout-btn {
+      background: #ef4444;
+    }
+
+    .logout-btn:hover {
+      background: #dc2626;
+    }
+
+    #login-error {
+      color: #ef4444;
+      font-size: 0.7rem;
+      text-align: center;
+      display: none;
+      min-height: 0.9rem;
+    }
+
+    #auth-status {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .btn-circle:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-circle.disabled,
+    .btn-circle.disabled:hover {
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
   </style>
 </head>
 <body>
@@ -226,6 +327,15 @@
 <header>
   <h1>🌱 Serre connectée</h1>
   <div id="status">Déconnecté</div>
+  <div id="login-panel">
+    <div class="login-inputs">
+      <input type="text" id="username" placeholder="Utilisateur">
+      <input type="password" id="password" placeholder="Mot de passe">
+      <button class="login-btn" onclick="handleLogin()">Connexion</button>
+    </div>
+    <div id="login-error"></div>
+    <div id="auth-status" style="display:none;"></div>
+  </div>
 </header>
 
 <main>
@@ -241,7 +351,7 @@
             <div class="unit">lux</div>
           </div>
         </div>
-        <div class="btn-circle" id="led-btn" onclick="toggle('led', 'LED')">
+        <div class="btn-circle disabled" id="led-btn" onclick="toggle('led', 'LED')">
           <div class="icon">💡</div>
           <div class="label">Lumière</div>
         </div>
@@ -256,24 +366,35 @@
             <div class="unit">%</div>
           </div>
         </div>
-        <div class="btn-circle" id="hum-btn" onclick="toggle('hum', 'HUM')">
+        <div class="btn-circle disabled" id="hum-btn" onclick="toggle('hum', 'HUM')">
           <div class="icon">💧</div>
           <div class="label">Arrosage</div>
         </div>
       </div>
 
-      <!-- CO2 -->
+      <!-- Température -->
       <div class="sensor-item">
         <div class="indicator">
-          <div class="bubble" id="co2-bubble">
-            <label>CO2</label>
-            <div class="value" id="co2">-</div>
-            <div class="unit">ppm</div>
+          <div class="bubble" id="temp-bubble">
+            <label>Temp</label>
+            <div class="value" id="temp">-</div>
+            <div class="unit">°C</div>
           </div>
         </div>
-        <div class="btn-circle" id="fan-btn" onclick="toggle('fan', 'FAN')">
+        <div class="btn-circle disabled" id="fan-btn" onclick="toggle('fan', 'FAN')">
           <div class="icon">🌀</div>
           <div class="label">Ventilation</div>
+        </div>
+      </div>
+
+      <!-- Pression (sans bouton) -->
+      <div class="sensor-item">
+        <div class="indicator">
+          <div class="bubble" id="pressure-bubble">
+            <label>Press</label>
+            <div class="value" id="pressure">-</div>
+            <div class="unit">hPa</div>
+          </div>
         </div>
       </div>
 
@@ -302,10 +423,128 @@
   const socket = io({ reconnection: true, reconnectionDelay: 1000 });
   let chart = null;
   let states = { led: false, hum: false, fan: false };
+  let token = localStorage.getItem('auth_token');
+  let currentUsername = localStorage.getItem('username');
+  let isAuthenticated = false;
+
+  function setLoginError(msg) {
+    const el = document.getElementById('login-error');
+    if (msg) {
+      el.textContent = msg;
+      el.style.display = 'block';
+    } else {
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+  }
+
+  // Afficher l'utilisateur connecté si le token existe
+  if (token) {
+    showAuthInfo();
+    socket.emit('auth', token);
+  } else {
+    disableButtons();
+  }
+
+  async function handleLogin() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      setLoginError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        token = data.token;
+        currentUsername = data.username;
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('username', currentUsername);
+        
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        setLoginError('');
+        
+        socket.emit('auth', token);
+        isAuthenticated = true;
+        showAuthInfo();
+        enableButtons();
+      } else {
+        const error = await res.json();
+        setLoginError(error.error || 'Erreur de connexion');
+      }
+    } catch (err) {
+      setLoginError('Erreur réseau');
+    }
+  }
+
+  function showAuthInfo() {
+    const loginInputs = document.querySelector('.login-inputs');
+    const authStatus = document.getElementById('auth-status');
+    
+    loginInputs.style.display = 'none';
+    authStatus.style.display = 'flex';
+    authStatus.innerHTML = `
+      <span class="user-chip">👤 ${currentUsername}</span>
+      <button class="logout-btn" onclick="logout()">Déconnexion</button>
+    `;
+  }
+
+  function enableButtons() {
+    document.getElementById('led-btn').classList.remove('disabled');
+    document.getElementById('hum-btn').classList.remove('disabled');
+    document.getElementById('fan-btn').classList.remove('disabled');
+  }
+
+  function disableButtons() {
+    document.getElementById('led-btn').classList.add('disabled');
+    document.getElementById('hum-btn').classList.add('disabled');
+    document.getElementById('fan-btn').classList.add('disabled');
+  }
+
+  function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    token = null;
+    currentUsername = null;
+    isAuthenticated = false;
+    
+    const loginInputs = document.querySelector('.login-inputs');
+    const authStatus = document.getElementById('auth-status');
+    
+    loginInputs.style.display = 'flex';
+    authStatus.style.display = 'none';
+    document.getElementById('login-error').textContent = '';
+    
+    disableButtons();
+  }
 
   socket.on('connect', () => {
     document.getElementById('status').classList.add('connected');
     document.getElementById('status').textContent = 'Connecté';
+    if (token) {
+      socket.emit('auth', token);
+    }
+  });
+
+  socket.on('auth_success', (data) => {
+    enableButtons();
+    isAuthenticated = true;
+    console.log('Authentifié:', data.username);
+  });
+
+  socket.on('auth_error', (data) => {
+    disableButtons();
+    isAuthenticated = false;
+    console.error('Erreur auth:', data.message);
   });
 
   socket.on('disconnect', () => {
@@ -322,10 +561,14 @@
     else if (Math.abs(val - min) < (max - min) * 0.2 || Math.abs(val - max) < (max - min) * 0.2) bubble.classList.add('warning');
     else bubble.classList.add('critical');
     
-    el.textContent = id === 'co2' || id === 'rssi' ? Math.round(val) : val.toFixed(1);
+    el.textContent = (id === 'rssi' || id === 'pressure') ? Math.round(val) : val.toFixed(1);
   }
 
   function toggle(type, cmd) {
+    if (!isAuthenticated) {
+      setLoginError(''); // Pas de message rouge
+      return;
+    }
     states[type] = !states[type];
     const btn = document.getElementById(type + '-btn');
     if (states[type]) {
@@ -338,10 +581,34 @@
 
   socket.on('telemetry', d => {
     if (!d) return;
+    
+    // Mise à jour des capteurs
     update('lux', d.luminosite || 0, 500, 10000);
     update('soil', d.humidite_sol || 0, 30, 70);
-    update('co2', d.co2 || 0, 400, 1200);
+    update('temp', d.temperature || 0, 15, 30);
+    update('pressure', d.pressure || 0, 990, 1030);
     update('rssi', d.rssi || -100, -70, -50);
+    
+    // Ajouter le nouveau point au graphique en temps réel
+    if (chartData) {
+      chartData.push({
+        timestamp: new Date().toISOString(),
+        luminosite: d.luminosite || 0,
+        humidite_sol: d.humidite_sol || 0,
+        temperature: d.temperature || 0,
+        pressure: d.pressure || 0,
+        rssi: d.rssi || 0,
+        led_on: d.led_on || false,
+        fan_on: d.fan_on || false,
+        humidifier_on: d.humidifier_on || false
+      });
+      
+      // Garder seulement les 100 derniers points
+      if (chartData.length > 100) chartData.shift();
+      
+      // Actualiser le graphique
+      renderChart(chartData);
+    }
     
     // Synchroniser les états des boutons
     if (d.led_on !== undefined) {
@@ -364,109 +631,121 @@
     }
   });
 
+  let chartData = null; // Stockage des données du graphique
+
+  function renderChart(data) {
+    if (!data || data.length === 0) return;
+    
+    const ctx = document.getElementById('chart').getContext('2d');
+    const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+    
+    if (chart) {
+      // Mettre à jour les données existantes sans détruire le graphique
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data.map(d => d.luminosite);
+      chart.data.datasets[1].data = data.map(d => d.humidite_sol);
+      chart.data.datasets[2].data = data.map(d => d.temperature || 0);
+      chart.data.datasets[3].data = data.map(d => d.pressure || 0);
+      chart.update('none'); // 'none' = pas d'animation, juste mise à jour
+      return;
+    }
+    
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Luminosité (lux)',
+            data: data.map(d => d.luminosite),
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251,191,36,0.05)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Humidité (%)',
+            data: data.map(d => d.humidite_sol),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.05)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Température (°C)',
+            data: data.map(d => d.temperature || 0),
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.05)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Pression (hPa)',
+            data: data.map(d => d.pressure || 0),
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139,92,246,0.05)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { left: 0, right: 0 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: { color: '#94a3b8', usePointStyle: true, padding: 10 }
+          },
+          annotation: {
+            drawTime: 'afterDraw'
+          }
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            max: 1500,
+            ticks: { color: '#94a3b8', font: { weight: 'bold' }, callback: function(value) { return Math.round(value); } },
+            grid: { color: 'rgba(148,163,184,0.1)' }
+          },
+          x: {
+            ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 0 },
+            grid: { color: 'rgba(255,255,255,0.05)' }
+          }
+        }
+      },
+      plugins: []
+    });
+  }
+
   function loadChart() {
     fetch('/api/history?limit=100')
       .then(r => r.json())
       .then(data => {
-        if (!data || data.length === 0) return;
-        
-        // Les données arrivent déjà triées (anciennes à gauche, récentes à droite)
-        const ctx = document.getElementById('chart').getContext('2d');
-        const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
-        
-        if (chart) chart.destroy();
-        
-        // Calcul des échelles dynamiques pour chaque axe
-        const luxValues = data.map(d => d.luminosite).filter(v => v);
-        const luxMin = 0;
-        const luxMax = 1000;
-        
-        const humValues = data.map(d => d.humidite_sol).filter(v => v);
-        const humMin = 0;
-        const humMax = 100;
-        
-        const co2Values = data.map(d => d.co2).filter(v => v);
-        const co2Min = 0;
-        const co2Max = 1000;
-        
-        chart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: 'Luminosité (lux)',
-                data: data.map(d => d.luminosite),
-                borderColor: '#fbbf24',
-                backgroundColor: 'rgba(251,191,36,0.05)',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-                yAxisID: 'y'
-              },
-              {
-                label: 'Humidité (%)',
-                data: data.map(d => d.humidite_sol),
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59,130,246,0.05)',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-                yAxisID: 'y'
-              },
-              {
-                label: 'CO2 (ppm)',
-                data: data.map(d => d.co2),
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16,185,129,0.05)',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-                yAxisID: 'y'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { left: 0, right: 0 } },
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-              legend: {
-                display: true,
-                position: 'bottom',
-                labels: { color: '#94a3b8', usePointStyle: true, padding: 10 }
-              },
-              annotation: {
-                drawTime: 'afterDraw'
-              }
-            },
-            scales: {
-              y: {
-                type: 'linear',
-                position: 'right',
-                min: 0,
-                max: 1500,
-                ticks: { color: '#94a3b8', font: { weight: 'bold' }, callback: function(value) { return Math.round(value); } },
-                grid: { color: 'rgba(148,163,184,0.1)' }
-              },
-              x: {
-                ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 0 },
-                grid: { color: 'rgba(255,255,255,0.05)' }
-              }
-            }
-          },
-          plugins: []
-        });
+        chartData = data;
+        renderChart(chartData);
       })
       .catch(err => console.error('Erreur chargement historique:', err));
   }
 
-  loadChart();
-  setInterval(loadChart, 2000); // Actualisation toutes les 2 secondes
+  loadChart(); // Charger une seule fois au démarrage
 </script>
 </body>
 </html>

@@ -2,6 +2,8 @@ const mqtt = require('mqtt');
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 // const nodemailer = require('nodemailer');
 const { Pool } = require('pg');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
@@ -45,6 +47,31 @@ const io = new Server(server, {
 
 app.use(express.static('public'));
 app.use(express.json());
+
+// Middleware d'authentification
+async function authenticateToken(req, res, next) {
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Pas de token' });
+  }
+
+  try {
+    const result = await pgPool.query(
+      'SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()',
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Token invalide ou expiré' });
+    }
+    
+    req.user = result.rows[0];
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
 
 // Pas d'historique en mémoire - tout dans InfluxDB
 
@@ -192,9 +219,35 @@ client.on('message', async (topic, message) => {
 // WebSocket
 io.on('connection', (socket) => {
   console.log('[WebSocket] Client connecté:', socket.id);
+  let authenticatedUser = null;
+
+  // Authentification WebSocket
+  socket.on('auth', async (token) => {
+    try {
+      const result = await pgPool.query(
+        'SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()',
+        [token]
+      );
+      
+      if (result.rows.length > 0) {
+        authenticatedUser = result.rows[0];
+        socket.emit('auth_success', { username: authenticatedUser.username });
+      } else {
+        socket.emit('auth_error', { message: 'Token invalide' });
+      }
+    } catch (error) {
+      socket.emit('auth_error', { message: 'Erreur serveur' });
+    }
+  });
 
   socket.on('cmd', (cmd) => {
-    console.log('[CMD] Commande reçue:', cmd);
+    // Vérifier l'authentification avant d'accepter une commande
+    if (!authenticatedUser) {
+      socket.emit('cmd_ack', { cmd, status: 'error', message: 'Non authentifié' });
+      return;
+    }
+
+    console.log('[CMD] Commande de', authenticatedUser.username + ':', cmd);
     if (client.connected) {
       client.publish(TOPIC_CMD, cmd);
       socket.emit('cmd_ack', { cmd, status: 'sent' });
@@ -285,6 +338,96 @@ app.get('/api/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('[API] Erreur stats:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// API Authentification
+
+// Login
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username et password requis' });
+    }
+
+    const result = await pgPool.query(
+      'SELECT id, username, password_hash FROM users WHERE username = $1 AND is_active = true',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
+    // Créer un token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+
+    await pgPool.query(
+      'INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.id, token, expiresAt]
+    );
+
+    // Mettre à jour last_login
+    await pgPool.query(
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    res.json({ token, username: user.username });
+  } catch (error) {
+    console.error('[AUTH] Erreur login:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Register (optionnel)
+app.post('/api/register', async (req, res) => {
+  try {
+    const { username, password, email } = req.body;
+
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: 'Tous les champs sont requis' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Le mot de passe doit avoir au moins 6 caractères' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pgPool.query(
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username',
+      [username, email, hashedPassword]
+    );
+
+    res.status(201).json({ message: 'Utilisateur créé', username: result.rows[0].username });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Username ou email déjà utilisé' });
+    }
+    console.error('[AUTH] Erreur register:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Logout
+app.post('/api/logout', authenticateToken, async (req, res) => {
+  try {
+    const token = req.headers['authorization'].split(' ')[1];
+    await pgPool.query('DELETE FROM sessions WHERE token = $1', [token]);
+    res.json({ message: 'Déconnecté' });
+  } catch (error) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

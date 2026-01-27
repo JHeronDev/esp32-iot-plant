@@ -67,7 +67,3 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Utilisateur de démonstration (password: demo123 - hash bcrypt)
-INSERT INTO users (username, email, password_hash) 
-VALUES ('demo', 'demo@example.com', '$2b$10$rBV2KYjYZQjX5p5YGx4ZGOxKr1z9qJ9qJ9qJ9qJ9qJ9qJ9qJ9qJ9q')
-ON CONFLICT (username) DO NOTHING;

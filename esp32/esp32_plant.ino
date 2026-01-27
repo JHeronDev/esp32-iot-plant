@@ -2,6 +2,7 @@
 #include <PubSubClient.h>
 #include <Wire.h>
 #include <BH1750.h>
+#include <Adafruit_BMP280.h>
 
 // ================= CONFIGURATION UTILISATEUR =================
 bool USE_SERVER_1 = true;  // Mets sur false pour désactiver le PC 1
@@ -17,6 +18,8 @@ const char* MQTT_HOST2 = "172.16.8.8";
 #define LED_PIN 2
 #define FAN_PIN 14
 #define HUMIDIFIER_PIN 27
+#define CTP_SDA 18
+#define CTP_SCL 19
 
 const char* WIFI_SSID = "CFAINSTA_STUDENTS";
 const char* WIFI_PASS = "Cf@InSt@-$tUd3nT";
@@ -29,6 +32,10 @@ WiFiClient espClient2;
 PubSubClient mqtt1(espClient1);
 PubSubClient mqtt2(espClient2);
 BH1750 lightMeter;
+Adafruit_BMP280 bmp; // I2C
+
+// Pression au niveau de la mer (hPa) pour calcul altitude
+const float SEA_LEVEL_HPA = 1013.25;
 
 // États des appareils
 bool ledOn = false;
@@ -133,6 +140,23 @@ void setup() {
   mqtt2.setCallback(onMessage);
 
   lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
+  
+  // Init BMP280
+  bool ok = bmp.begin(0x76);
+  if (!ok) ok = bmp.begin(0x77);
+  if (!ok) {
+    Serial.println("Erreur: BMP280 introuvable en I2C (0x76/0x77). Vérifie câblage.");
+  } else {
+    bmp.setSampling(
+      Adafruit_BMP280::MODE_NORMAL,
+      Adafruit_BMP280::SAMPLING_X2,   // Température
+      Adafruit_BMP280::SAMPLING_X16,  // Pression
+      Adafruit_BMP280::FILTER_X16,
+      Adafruit_BMP280::STANDBY_MS_500
+    );
+    Serial.println("BMP280 OK.");
+  }
+  
   Serial.println("\nPrêt !");
 }
 
@@ -152,11 +176,15 @@ void loop() {
 
     float lux = lightMeter.readLightLevel();
     int soilRaw = analogRead(SOIL_PIN);
-    float soilPercent = map(soilRaw, 4095, 0, 0, 100); 
+    float soilPercent = map(soilRaw, 4095, 0, 0, 100);
+    float temperature = bmp.readTemperature();
+    float pressurePa = bmp.readPressure();
+    float pressurehPa = pressurePa / 100.0;
 
     String payload = "{\"luminosite\":" + String(lux) + 
                      ",\"humidite_sol\":" + String(soilPercent) + 
-                     ",\"co2\":" + String(random(400, 800)) + 
+                     ",\"temperature\":" + String(temperature, 2) +
+                     ",\"pressure\":" + String(pressurehPa, 2) +
                      ",\"rssi\":" + String(WiFi.RSSI()) + 
                      ",\"led_on\":" + (ledOn ? "true" : "false") +
                      ",\"fan_on\":" + (fanOn ? "true" : "false") +
