@@ -481,6 +481,84 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// ============= API ADMIN (Sécurisée par token secret) =============
+
+// Middleware pour vérifier le token admin
+function requireAdminToken(req, res, next) {
+  const adminToken = req.headers['x-admin-token'];
+  const expectedToken = process.env.ADMIN_SECRET_TOKEN;
+
+  if (!expectedToken) {
+    return res.status(500).json({ error: 'Token admin non configuré sur le serveur' });
+  }
+
+  if (!adminToken || adminToken !== expectedToken) {
+    return res.status(403).json({ error: 'Accès refusé - Token admin invalide' });
+  }
+
+  next();
+}
+
+// Lister tous les utilisateurs (ADMIN)
+app.get('/api/admin/users', requireAdminToken, async (req, res) => {
+  try {
+    const result = await pgPool.query('SELECT id, username, email, created_at, last_login, is_active FROM users ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[ADMIN] Erreur liste users:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer un utilisateur (ADMIN)
+app.post('/api/admin/users', requireAdminToken, async (req, res) => {
+  try {
+    const { username, password, email } = req.body;
+
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: 'Tous les champs sont requis' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Le mot de passe doit avoir au moins 6 caractères' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pgPool.query(
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email',
+      [username, email, hashedPassword]
+    );
+
+    res.status(201).json({ message: 'Utilisateur créé', user: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Username ou email déjà utilisé' });
+    }
+    console.error('[ADMIN] Erreur création user:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer un utilisateur (ADMIN)
+app.delete('/api/admin/users/:id', requireAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pgPool.query('DELETE FROM users WHERE id = $1 RETURNING username', [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    res.json({ message: 'Utilisateur supprimé', username: result.rows[0].username });
+  } catch (error) {
+    console.error('[ADMIN] Erreur suppression user:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ============= FIN API ADMIN =============
+
 // Supprimer un utilisateur (désactivée en production)
 app.delete('/api/users/:id', async (req, res) => {
   // Bloquer la suppression en production pour la sécurité
