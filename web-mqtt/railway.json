@@ -1,0 +1,57 @@
+{
+  "name": "ESP32 IoT Plant Monitor - Web App",
+  "description": "Web application for ESP32 IoT Plant Monitor with MQTT and real-time WebSocket",
+  "builder": "dockerfile",
+  "dockerfile": {
+    "path": "./Dockerfile",
+    "buildContext": "."
+  },
+  "variables": {
+    "PORT": {
+      "description": "Server port",
+      "value": "3000"
+    },
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    },
+    "MQTT_BROKER": {
+      "description": "MQTT broker URL",
+      "value": "mqtt://localhost:1883"
+    },
+    "POSTGRES_HOST": {
+      "description": "PostgreSQL host",
+      "value": "localhost"
+    },
+    "POSTGRES_PORT": {
+      "description": "PostgreSQL port",
+      "value": "5432"
+    },
+    "POSTGRES_DATABASE": {
+      "description": "PostgreSQL database name",
+      "value": "iot_plant"
+    },
+    "POSTGRES_USER": {
+      "description": "PostgreSQL user",
+      "value": "iot_user"
+    },
+    "POSTGRES_PASSWORD": {
+      "description": "PostgreSQL password"
+    },
+    "INFLUX_URL": {
+      "description": "InfluxDB URL",
+      "value": "http://localhost:8086"
+    },
+    "INFLUX_TOKEN": {
+      "description": "InfluxDB token"
+    },
+    "INFLUX_ORG": {
+      "description": "InfluxDB organization",
+      "value": "iot_org"
+    },
+    "INFLUX_BUCKET": {
+      "description": "InfluxDB bucket",
+      "value": "plant_data"
+    }
+  }
+}

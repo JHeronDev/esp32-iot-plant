@@ -1,0 +1,40 @@
+{
+  "name": "ESP32 IoT Plant Monitor - MQTT Stack",
+  "description": "MQTT, PostgreSQL, and InfluxDB infrastructure for ESP32 IoT Plant Monitor",
+  "builder": "dockerfile",
+  "dockerfile": {
+    "path": "./Dockerfile",
+    "buildContext": "."
+  },
+  "variables": {
+    "POSTGRES_DB": {
+      "description": "PostgreSQL database name",
+      "value": "iot_plant"
+    },
+    "POSTGRES_USER": {
+      "description": "PostgreSQL user",
+      "value": "iot_user"
+    },
+    "POSTGRES_PASSWORD": {
+      "description": "PostgreSQL password"
+    },
+    "INFLUX_USER": {
+      "description": "InfluxDB admin user",
+      "value": "admin"
+    },
+    "INFLUX_PASSWORD": {
+      "description": "InfluxDB admin password"
+    },
+    "INFLUX_ORG": {
+      "description": "InfluxDB organization",
+      "value": "iot_org"
+    },
+    "INFLUX_BUCKET": {
+      "description": "InfluxDB bucket",
+      "value": "plant_data"
+    },
+    "INFLUX_TOKEN": {
+      "description": "InfluxDB admin token"
+    }
+  }
+}

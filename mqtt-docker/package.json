@@ -1,0 +1,25 @@
+{
+  "name": "mqtt-broker",
+  "version": "1.0.0",
+  "description": "MQTT Broker, PostgreSQL, and InfluxDB Stack for ESP32 IoT Plant Monitor",
+  "main": "index.js",
+  "scripts": {
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "logs": "docker-compose logs -f"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mqtt",
+    "mosquitto",
+    "postgresql",
+    "influxdb",
+    "iot",
+    "plant",
+    "monitor"
+  ],
+  "author": "",
+  "license": "MIT"
+}
