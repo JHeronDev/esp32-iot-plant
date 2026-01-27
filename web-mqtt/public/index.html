@@ -91,6 +91,44 @@
       text-align: center;
     }
 
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      text-align: left;
+    }
+
+    .ghost-btn {
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .ghost-btn:hover {
+      border-color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .ghost-btn.active {
+      border-color: #10b981;
+      color: #10b981;
+    }
+
     #sensors {
       display: flex;
       gap: 0.5rem;
@@ -416,7 +454,10 @@
 
 <main>
   <section>
-    <h2>Capteurs</h2>
+    <div class="section-header">
+      <h2>Capteurs</h2>
+      <button class="ghost-btn" id="settings-toggle" onclick="toggleSettingsSection()">⚙️ Paramètres</button>
+    </div>
     <div id="sensors">
       <!-- Luminosité -->
       <div class="sensor-item" data-sensor="lux">
@@ -488,7 +529,7 @@
   </section>
 
   <section id="settings-section">
-    <h2>Réglages admin</h2>
+    <h2>Paramètres</h2>
     <div class="settings-grid">
       <div class="setting-card" data-setting="lux">
         <h3>Luminosité</h3>
@@ -608,6 +649,7 @@
     }
   };
   let settings = JSON.parse(JSON.stringify(defaultSettings));
+  let settingsVisible = false;
 
   function setLoginError(msg) {
     const el = document.getElementById('login-error');
@@ -661,6 +703,30 @@
     el.style.color = isError ? '#ef4444' : '#10b981';
   }
 
+  function updateSettingsSectionVisibility() {
+    const section = document.getElementById('settings-section');
+    const toggle = document.getElementById('settings-toggle');
+    if (!section || !toggle) return;
+
+    if (!isAuthenticated) {
+      settingsVisible = false;
+      section.style.display = 'none';
+      toggle.style.display = 'none';
+      toggle.classList.remove('active');
+      return;
+    }
+
+    toggle.style.display = 'inline-flex';
+    section.style.display = settingsVisible ? 'block' : 'none';
+    toggle.classList.toggle('active', settingsVisible);
+  }
+
+  function toggleSettingsSection() {
+    if (!isAuthenticated) return;
+    settingsVisible = !settingsVisible;
+    updateSettingsSectionVisibility();
+  }
+
   async function loadSettingsFromServer() {
     if (!token) return;
     try {
@@ -674,12 +740,13 @@
       fillSettingsForm();
       applyIndicatorVisibility();
       setSettingsStatus('Paramètres chargés');
-      document.getElementById('settings-section').style.display = 'block';
+      updateSettingsSectionVisibility();
     } catch (error) {
       settings = JSON.parse(JSON.stringify(defaultSettings));
       fillSettingsForm();
       applyIndicatorVisibility();
       setSettingsStatus('Paramètres par défaut utilisés', true);
+      updateSettingsSectionVisibility();
     }
   }
 
@@ -726,8 +793,10 @@
     showAuthInfo();
     socket.emit('auth', token);
     loadSettingsFromServer();
+    updateSettingsSectionVisibility();
   } else {
     disableButtons();
+    updateSettingsSectionVisibility();
   }
 
   async function handleLogin() {
@@ -762,6 +831,7 @@
         showAuthInfo();
         enableButtons();
         loadSettingsFromServer();
+        updateSettingsSectionVisibility();
       } else {
         const error = await res.json();
         setLoginError(error.error || 'Erreur de connexion');
@@ -810,7 +880,8 @@
     document.getElementById('login-error').textContent = '';
     
     disableButtons();
-    document.getElementById('settings-section').style.display = 'none';
+    settingsVisible = false;
+    updateSettingsSectionVisibility();
     settings = JSON.parse(JSON.stringify(defaultSettings));
     applyIndicatorVisibility();
     setSettingsStatus('');
@@ -838,15 +909,16 @@
   socket.on('auth_success', (data) => {
     enableButtons();
     isAuthenticated = true;
-    document.getElementById('settings-section').style.display = 'block';
     loadSettingsFromServer();
+    updateSettingsSectionVisibility();
     console.log('Authentifié:', data.username);
   });
 
   socket.on('auth_error', (data) => {
     disableButtons();
     isAuthenticated = false;
-    document.getElementById('settings-section').style.display = 'none';
+    settingsVisible = false;
+    updateSettingsSectionVisibility();
     console.error('Erreur auth:', data.message);
   });
 
@@ -1056,6 +1128,7 @@
   }
 
   loadChart(); // Charger une seule fois au démarrage
+  updateSettingsSectionVisibility();
 </script>
 </body>
 </html>
