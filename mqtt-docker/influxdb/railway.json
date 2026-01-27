@@ -1,0 +1,29 @@
+{
+  "name": "ESP32 IoT Plant Monitor - InfluxDB",
+  "description": "InfluxDB time-series database for telemetry data",
+  "builder": "dockerfile",
+  "dockerfile": {
+    "path": "mqtt-docker/influxdb/Dockerfile",
+    "buildContext": "."
+  },
+  "variables": {
+    "INFLUX_USER": {
+      "description": "Admin username",
+      "value": "admin"
+    },
+    "INFLUX_PASSWORD": {
+      "description": "Admin password"
+    },
+    "INFLUX_ORG": {
+      "description": "Organization name",
+      "value": "iot_org"
+    },
+    "INFLUX_BUCKET": {
+      "description": "Default bucket",
+      "value": "plant_data"
+    },
+    "INFLUX_TOKEN": {
+      "description": "Admin token for authentication"
+    }
+  }
+}

@@ -5,11 +5,9 @@
 #include <Adafruit_BMP280.h>
 
 // ================= CONFIGURATION RAILWAY =================
-// Remplace par l'URL/IP du broker MQTT de Railway
-// Exemple: "mosquitto-service.railway.app" ou "123.456.789.10"
 const char* MQTT_HOST = "mqtt-production-9d1e.up.railway.app";
 const int   MQTT_PORT = 1883;
-// Authentification MQTT (optionnel, dépend de ta config Mosquitto)
+// Authentification MQTT
 const char* MQTT_USER = "";  // Laisser vide si pas de username
 const char* MQTT_PASS = "";  // Laisser vide si pas de password
 // ==========================================================
