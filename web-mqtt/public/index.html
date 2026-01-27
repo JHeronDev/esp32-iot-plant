@@ -480,7 +480,9 @@
 
   // Afficher l'utilisateur connecté si le token existe
   if (token) {
+    isAuthenticated = true;
     showAuthInfo();
+    enableButtons();
     socket.emit('auth', token);
   } else {
     disableButtons();
