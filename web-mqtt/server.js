@@ -424,8 +424,13 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Register (optionnel)
+// Register (désactivée en production pour la sécurité)
 app.post('/api/register', async (req, res) => {
+  // Bloquer l'inscription en production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Inscription désactivée en production' });
+  }
+
   try {
     const { username, password, email } = req.body;
 
@@ -472,6 +477,23 @@ app.get('/api/users', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('[API] Erreur users:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer un utilisateur (désactivée en production)
+app.delete('/api/users/:id', async (req, res) => {
+  // Bloquer la suppression en production pour la sécurité
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Suppression désactivée en production' });
+  }
+
+  try {
+    const { id } = req.params;
+    await pgPool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ message: 'Utilisateur supprimé' });
+  } catch (error) {
+    console.error('[API] Erreur suppression user:', error.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
