@@ -1,13 +1,12 @@
 # 🌱 ESP32 IoT Plant Monitor
 
-Système complet de surveillance et contrôle de plante connectée avec ESP32, MQTT, MySQL et interface web temps réel.
+Système complet de surveillance et contrôle de plante connectée avec ESP32, MQTT, PostgreSQL, InfluxDB et interface web temps réel.
 
 ## 📋 Fonctionnalités
 
 ### 🔧 Capteurs et Actuateurs
 - **Luminosité** : Capteur BH1750 (0-65535 lux)
 - **Humidité du sol** : Capteur capacitif (0-100%)
-- **CO2** : Simulation (400-800 ppm)
 - **Signal WiFi** : RSSI en temps réel
 - **Contrôles** : LED, Pompe d'arrosage, Ventilateur
 
@@ -15,16 +14,16 @@ Système complet de surveillance et contrôle de plante connectée avec ESP32, M
 - Dashboard responsive (mobile/desktop)
 - Visualisation en cercles colorés
 - Graphiques historiques interactifs
-- Alertes en temps réel
-- Indicateur de connexion
+- Indicateur de connexion et d'authentification JWT
+- Panneau Parametres pour ajuster les seuils capteurs
 
 ### 💾 Backend
 - MQTT broker (Mosquitto)
 - PostgreSQL pour gestion des comptes
 - InfluxDB pour données time-series
-- API REST
-- WebSocket temps réel
-- Alertes email automatiques
+- API REST + WebSocket temps réel (authentification JWT 7 jours)
+- API Admin sécurisée par jeton secret (x-admin-token)
+- Seuils capteurs persistés en JSON (fichier settings)
 
 ## 🏗️ Architecture
 
@@ -32,24 +31,24 @@ Système complet de surveillance et contrôle de plante connectée avec ESP32, M
 esp32-iot-plant/
 ├── esp32/                  # Code Arduino pour ESP32
 │   └── esp32_plant.ino
-├── mqtt-docker/            # Services Docker
-│   ├── docker-compose.yml
+├── mqtt-docker/            # Configuration MQTT / bases
 │   ├── mosquitto/
 │   │   └── mosquitto.conf
 │   └── postgres/
 │       └── init.sql
 └── web-mqtt/               # Application web Node.js
-    ├── Dockerfile
-    ├── package.json
-    ├── server.js
-    └── public/
-        └── index.html
+  ├── package.json
+  ├── server.js           # API REST + WebSocket + MQTT bridge
+  └── public/
+    ├── index.html      # Structure HTML (sans styles inline)
+    ├── style.css       # Styles globaux et panneau Parametres
+    └── app.js          # Auth JWT, WebSocket, graphiques, seuils
 ```
 
 ## 🚀 Installation
 
 ### Prérequis
-- Docker & Docker Compose
+- Node.js 18+
 - Arduino IDE (pour ESP32)
 - Capteurs : BH1750, capteur d'humidité du sol
 
@@ -61,37 +60,34 @@ Copier le fichier d'exemple et configurer vos paramètres :
 cp .env.example .env
 ```
 
-Éditer [.env](.env) avec vos informations :
+Variables principales à renseigner :
 
 ```env
-# PostgreSQL (Gestion des comptes)
-POSTGRES_DB=iot_plant
-POSTGRES_USER=iot_user
-POSTGRES_PASSWORD=votremotdepasse
+# Web / Auth
+PORT=3000
+NODE_ENV=production
+JWT_SECRET=change-moi
+ADMIN_SECRET_TOKEN=change-moi-aussi
 
-# InfluxDB (Données télémétrie)
+# MQTT
+MQTT_BROKER=mqtt://<hote>:1883
+
+# PostgreSQL (comptes utilisateurs)
+DATABASE_URL=postgres://<user>:<pass>@<host>:<port>/<db>
+
+# InfluxDB (télémétrie)
+INFLUX_URL=http://<host>:8086
+INFLUX_TOKEN=<token>
 INFLUX_ORG=iot_org
 INFLUX_BUCKET=plant_data
-INFLUX_TOKEN=votretoken123456
-
-# Email (optionnel pour alertes)
-EMAIL_USER=votre-email@gmail.com
-EMAIL_PASSWORD=votre-app-password
-EMAIL_TO=destinataire@example.com
 ```
 
-### 2. Démarrage des services Docker
+### 2. Lancer le serveur web
 
 ```bash
-cd mqtt-docker
-docker-compose up -d
-```
-
-Vérifier l'état des services :
-
-```bash
-docker-compose ps
-docker-compose logs -f
+cd web-mqtt
+npm install
+npm start
 ```
 
 ### 3. Configuration ESP32
@@ -115,7 +111,7 @@ GPIO 34   -->  AOUT
 3.3V      -->  VCC
 GND       -->  GND
 
-ESP32          Actuateurs
+ESP32          Actionneurs
 GPIO 2    -->  LED
 GPIO 14   -->  Ventilateur
 GPIO 13   -->  Pompe
@@ -125,12 +121,9 @@ GPIO 13   -->  Pompe
 Modifier dans [esp32/esp32_plant.ino](esp32/esp32_plant.ino) :
 
 ```cpp
-// Activer/désactiver les serveurs
-bool USE_SERVER_1 = true;
-bool USE_SERVER_2 = false;
-
-// Adresses IP (trouver avec: docker inspect mqtt-broker)
-const char* MQTT_HOST1 = "172.16.8.160";
+// Broker MQTT
+const char* MQTT_HOST = "<hote-mqtt>";
+const int   MQTT_PORT = 1883;
 
 // WiFi
 const char* WIFI_SSID = "VotreSSID";
@@ -147,82 +140,33 @@ const char* WIFI_PASS = "VotreMotDePasse";
 ### Interface Web
 Accéder à : **http://localhost:3000**
 
-- **Cercles de capteurs** : Affichent les valeurs en temps réel
-- **Cliquer sur les cercles** : Active/désactive les actuateurs
-- **Graphique** : Historique des 100 dernières mesures
-- **Alertes** : Notifications en haut à droite
+- Cercles de capteurs en temps réel (couleurs selon seuils)
+- Boutons LED / Arrosage / Ventilation (auth requise)
+- Graphique : dernières 100 mesures (luminosité, humidité, température, pression)
+- Panneau Parametres : seuils min/max éditables (auth requise)
 
 ### API REST
 
-#### Historique depuis InfluxDB
-```bash
-GET http://localhost:3000/api/history?limit=100
-```
-
-#### Statistiques 24h (moyennes)
-```bash
-GET http://localhost:3000/api/stats
-```
-
-#### Liste des utilisateurs
-```bash
-GET http://localhost:3000/api/users
-```
-
-#### Santé du serveur
-```bash
-GET http://localhost:3000/health
-```
-
-Réponse :
-```json
-{
-  "status": "ok",
-  "mqtt": true,
-  "postgres": true,
-  "influxdb": true,
-  "uptime": 3600
-}
-```
+- Historique InfluxDB : `GET /api/history?limit=100`
+- Statistiques 24h : `GET /api/stats`
+- Paramètres capteurs : `GET/POST /api/settings` (JWT obligatoire)
+- Liste utilisateurs : `GET /api/users`
+- Admin utilisateurs : `GET/POST/DELETE /api/admin/users` (header `x-admin-token`)
+- Santé serveur : `GET /health`
 
 ## 🎯 Seuils et Alertes
+
+Seuils par défaut (éditables dans le panneau Parametres ou via `/api/settings`):
 
 | Capteur | Optimal | Alerte |
 |---------|---------|--------|
 | Luminosité | 500-10000 lux | < 500 ou > 10000 |
-| Humidité sol | 30-70% | < 30% (email envoyé) |
-| CO2 | 400-1200 ppm | > 1200 |
+| Humidité sol | 30-70% | < 30% |
+| Température | 15-30 °C | < 15 ou > 30 |
+| Pression | 990-1030 hPa | < 990 ou > 1030 |
 | WiFi | > -70 dB | < -80 dB |
 
-## 🛠️ Commandes Docker
-
-```bash
-# Démarrer les services
-docker-compose up -d
-
-# Arrêter les services
-docker-compose down
-
-# Voir les logs
-docker-compose logs -f web
-
-# Redémarrer un service
-docker-compose restart web
-
-# Supprimer volumes (⚠️ efface les données)
-docker-compose down -v
-```
-
 ## 🔧 Développement
-
-### Mode développement (avec auto-reload)
-
-Installer nodemon :
-```bash
-cd web-mqtt
-npm install
-npm run dev
-```
 
 ### Structure des bases de données
 
@@ -285,27 +229,21 @@ Timestamp: automatique
 
 ### Bases de données ne fonctionnent pas
 - Vérifier les credentials dans [.env](.env)
-- Vérifier les logs : `docker-compose logs postgres` ou `docker-compose logs influxdb`
-- InfluxDB UI : http://localhost:8086 (user: admin)
+- Tester la connexion PostgreSQL / InfluxDB avec les outils clients
+- InfluxDB UI : http://localhost:8086
 
 ## 🔒 Sécurité
 
 ### Production
-- ✅ Utilisateur non-root dans Docker
+- ✅ JWT signé avec `JWT_SECRET` robuste
+- ✅ Token admin séparé (`x-admin-token`)
 - ✅ Variables d'environnement pour credentials
-- ✅ Healthchecks actifs
-- ✅ Restart policies configurées
+- ✅ Healthchecks pour MQTT / PostgreSQL / InfluxDB
 - ⚠️ Activer l'authentification MQTT (mosquitto.conf)
-- ⚠️ Utiliser HTTPS en production
+- ⚠️ Utiliser HTTPS et certificats valides
 - ⚠️ Firewall pour les ports exposés
 
 ## 📦 Optimisations
-
-### Docker
-- Multi-stage build (réduction de 50% de la taille)
-- Volumes nommés pour persistence
-- Networks isolés
-- Healthchecks automatiques
 
 ### Backend
 - PostgreSQL pour comptes utilisateurs
@@ -319,19 +257,15 @@ Timestamp: automatique
 - Responsive design
 - Reconnexion WebSocket automatique
 - Indicateur de connexion
+- Auth JWT (7 jours), panneau Parametres, graphiques Chart.js
 - Accessibilité (ARIA, clavier)
-
-## 📄 Licence
-
-MIT
 
 ## 👤 Auteur
 
-Projet ESP32 IoT Plant Monitor
+Emile
+Enzo
+Julien
 
 ## 🙏 Remerciements
 
-- Eclipse Mosquitto
-- Chart.js
-- Socket.io
-- Node.js & Express
+Personne, fallait être là
