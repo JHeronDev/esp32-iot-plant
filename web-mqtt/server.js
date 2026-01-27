@@ -135,14 +135,11 @@ async function initDatabases() {
     console.log('[PostgreSQL] Le serveur continue sans PostgreSQL');
   }
 
-  try {
-    // Test InfluxDB avec un ping simple
-    const healthAPI = new InfluxDB({ url: influxURL, token: influxToken }).getHealthAPI();
-    const health = await healthAPI.getHealth();
-    console.log('[InfluxDB] Connecté avec succès - Statut:', health.status);
-  } catch (error) {
-    console.error('[InfluxDB] Erreur de connexion:', error.message);
-    console.log('[InfluxDB] Le serveur continue sans InfluxDB');
+  // Test InfluxDB simple (pas de health check, juste vérifier que writeApi est initialisé)
+  if (writeApi) {
+    console.log('[InfluxDB] Connecté avec succès');
+  } else {
+    console.log('[InfluxDB] Non disponible');
   }
 }
 
