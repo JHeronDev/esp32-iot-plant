@@ -4,13 +4,15 @@
 #include <BH1750.h>
 #include <Adafruit_BMP280.h>
 
-// ================= CONFIGURATION UTILISATEUR =================
-bool USE_SERVER_1 = true;  // Mets sur false pour désactiver le PC 1
-bool USE_SERVER_2 = true; // Mets sur false pour désactiver le PC 2
-
-const char* MQTT_HOST1 = "172.16.8.81";
-const char* MQTT_HOST2 = "172.16.8.8";
-// =============================================================
+// ================= CONFIGURATION RAILWAY =================
+// Remplace par l'URL/IP du broker MQTT de Railway
+// Exemple: "mosquitto-service.railway.app" ou "123.456.789.10"
+const char* MQTT_HOST = "mqtt-production-9d1e.up.railway.app";
+const int   MQTT_PORT = 1883;
+// Authentification MQTT (optionnel, dépend de ta config Mosquitto)
+const char* MQTT_USER = "";  // Laisser vide si pas de username
+const char* MQTT_PASS = "";  // Laisser vide si pas de password
+// ==========================================================
 
 #define I2C_SDA 22
 #define I2C_SCL 21
@@ -27,10 +29,8 @@ const int   MQTT_PORT  = 1883;
 const char* TOPIC_TELEMETRY = "tp/esp32/telemetry";
 const char* TOPIC_CMD       = "tp/esp32/cmd";
 
-WiFiClient espClient1;
-WiFiClient espClient2;
-PubSubClient mqtt1(espClient1);
-PubSubClient mqtt2(espClient2);
+WiFiClient espClient;
+PubSubClient mqtt(espClient);
 BH1750 lightMeter;
 Adafruit_BMP280 bmp; // I2C
 
@@ -43,8 +43,7 @@ bool fanOn = false;
 bool humidifierOn = false;
 
 unsigned long lastSend = 0;
-unsigned long lastRetry1 = 0;
-unsigned long lastRetry2 = 0;
+unsigned long lastRetry = 0;
 const int retryInterval = 5000; // Tentative toutes les 5s
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
@@ -80,41 +79,31 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void tryConnectMQTT1() {
-  if (USE_SERVER_1 && !mqtt1.connected() && millis() - lastRetry1 > retryInterval) {
-    lastRetry1 = millis();
-    Serial.print("[MQTT 1] Tentative de connexion à ");
-    Serial.print(MQTT_HOST1);
+void tryConnectMQTT() {
+  if (!mqtt.connected() && millis() - lastRetry > retryInterval) {
+    lastRetry = millis();
+    Serial.print("[MQTT] Tentative de connexion à ");
+    Serial.print(MQTT_HOST);
     Serial.print(":");
     Serial.print(MQTT_PORT);
     Serial.print("... ");
-    String clientId = "ESP32-P1-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    if (mqtt1.connect(clientId.c_str())) {
-      mqtt1.subscribe(TOPIC_CMD);
-      Serial.println("OK ✓");
+    
+    String clientId = "ESP32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    
+    // Connexion avec ou sans authentification
+    bool connected = false;
+    if (strlen(MQTT_USER) > 0) {
+      connected = mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASS);
     } else {
-      Serial.print("ÉCHEC (code: ");
-      Serial.print(mqtt1.state());
-      Serial.println(")");
+      connected = mqtt.connect(clientId.c_str());
     }
-  }
-}
-
-void tryConnectMQTT2() {
-  if (USE_SERVER_2 && !mqtt2.connected() && millis() - lastRetry2 > retryInterval) {
-    lastRetry2 = millis();
-    Serial.print("[MQTT 2] Tentative de connexion à ");
-    Serial.print(MQTT_HOST2);
-    Serial.print(":");
-    Serial.print(MQTT_PORT);
-    Serial.print("... ");
-    String clientId = "ESP32-P2-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    if (mqtt2.connect(clientId.c_str())) {
-      mqtt2.subscribe(TOPIC_CMD);
+    
+    if (connected) {
+      mqtt.subscribe(TOPIC_CMD);
       Serial.println("OK ✓");
     } else {
       Serial.print("ÉCHEC (code: ");
-      Serial.print(mqtt2.state());
+      Serial.print(mqtt.state());
       Serial.println(")");
     }
   }
@@ -128,16 +117,13 @@ void setup() {
   pinMode(HUMIDIFIER_PIN, OUTPUT);
 
   // Timeouts WiFi (2s pour laisser le temps à la connexion TCP)
-  espClient1.setTimeout(2000); 
-  espClient2.setTimeout(2000);
+  espClient.setTimeout(2000); 
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
   
-  mqtt1.setServer(MQTT_HOST1, MQTT_PORT);
-  mqtt1.setCallback(onMessage);
-  mqtt2.setServer(MQTT_HOST2, MQTT_PORT);
-  mqtt2.setCallback(onMessage);
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
+  mqtt.setCallback(onMessage);
 
   lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
   
@@ -162,12 +148,10 @@ void setup() {
 
 void loop() {
   // 1. Priorité au traitement des messages (Actions rapides)
-  if (USE_SERVER_1) mqtt1.loop();
-  if (USE_SERVER_2) mqtt2.loop();
+  mqtt.loop();
 
   // 2. Tentatives de connexion
-  tryConnectMQTT1();
-  tryConnectMQTT2();
+  tryConnectMQTT();
 
   // 3. Envoi des données
   unsigned long now = millis();
@@ -190,7 +174,6 @@ void loop() {
                      ",\"fan_on\":" + (fanOn ? "true" : "false") +
                      ",\"humidifier_on\":" + (humidifierOn ? "true" : "false") + "}";
 
-    if (USE_SERVER_1 && mqtt1.connected()) mqtt1.publish(TOPIC_TELEMETRY, payload.c_str());
-    if (USE_SERVER_2 && mqtt2.connected()) mqtt2.publish(TOPIC_TELEMETRY, payload.c_str());
+    if (mqtt.connected()) mqtt.publish(TOPIC_TELEMETRY, payload.c_str());
   }
 }

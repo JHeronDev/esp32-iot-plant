@@ -160,6 +160,7 @@ const client = mqtt.connect(MQTT_BROKER, {
 
 client.on('connect', () => {
   console.log('[MQTT] Connecté au broker');
+  io.emit('mqtt_status', { connected: true });
   client.subscribe(TOPIC_TELEMETRY, (err) => {
     if (err) {
       console.error('[MQTT] Erreur subscription:', err);
@@ -171,6 +172,12 @@ client.on('connect', () => {
 
 client.on('error', (error) => {
   console.error('[MQTT] Erreur:', error.message);
+  io.emit('mqtt_status', { connected: false });
+});
+
+client.on('close', () => {
+  console.log('[MQTT] Déconnecté du broker');
+  io.emit('mqtt_status', { connected: false });
 });
 
 client.on('message', async (topic, message) => {
@@ -220,6 +227,9 @@ client.on('message', async (topic, message) => {
 io.on('connection', (socket) => {
   console.log('[WebSocket] Client connecté:', socket.id);
   let authenticatedUser = null;
+
+  // Envoyer l'état MQTT actuel au client
+  socket.emit('mqtt_status', { connected: client.connected });
 
   // Authentification WebSocket
   socket.on('auth', async (token) => {

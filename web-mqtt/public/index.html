@@ -528,10 +528,21 @@
   }
 
   socket.on('connect', () => {
-    document.getElementById('status').classList.add('connected');
-    document.getElementById('status').textContent = 'Connecté';
+    console.log('[WebSocket] Connecté');
     if (token) {
       socket.emit('auth', token);
+    }
+  });
+
+  // Mettre à jour l'état du broker MQTT
+  socket.on('mqtt_status', (data) => {
+    const statusEl = document.getElementById('status');
+    if (data.connected) {
+      statusEl.classList.add('connected');
+      statusEl.textContent = 'MQTT Connecté';
+    } else {
+      statusEl.classList.remove('connected');
+      statusEl.textContent = 'MQTT Déconnecté';
     }
   });
 
@@ -549,7 +560,7 @@
 
   socket.on('disconnect', () => {
     document.getElementById('status').classList.remove('connected');
-    document.getElementById('status').textContent = 'Déconnecté';
+    document.getElementById('status').textContent = 'Déconnecté du serveur';
   });
 
   function update(id, val, min, max) {
