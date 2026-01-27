@@ -4,12 +4,14 @@ const http = require('http');
 const { Server } = require("socket.io");
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const fs = require('fs').promises;
 // const nodemailer = require('nodemailer');
 const { Pool } = require('pg');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
 // Configuration depuis variables d'environnement
 const MQTT_BROKER = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
+const SETTINGS_FILE = process.env.SETTINGS_FILE || './settings.json';
 
 // PostgreSQL pour les comptes utilisateurs
 const pgPool = new Pool({
@@ -173,6 +175,66 @@ const client = mqtt.connect(MQTT_BROKER, {
   connectTimeout: 30000
 });
 
+const defaultSettings = {
+  thresholds: {
+    lux: { min: 500, max: 10000 },
+    soil: { min: 30, max: 70 },
+    temp: { min: 15, max: 30 },
+    pressure: { min: 990, max: 1030 },
+    rssi: { min: -70, max: -50 }
+  },
+  indicators: {
+    lux: true,
+    soil: true,
+    temp: true,
+    pressure: true,
+    rssi: true
+  }
+};
+
+let currentSettings = { ...defaultSettings };
+
+function mergeSettings(defaults, incoming = {}) {
+  const merged = { thresholds: {}, indicators: {} };
+
+  for (const key of Object.keys(defaults.thresholds)) {
+    const candidate = incoming.thresholds?.[key] || {};
+    const minCandidate = Number(candidate.min);
+    const maxCandidate = Number(candidate.max);
+    const min = Number.isFinite(minCandidate) ? minCandidate : defaults.thresholds[key].min;
+    const max = Number.isFinite(maxCandidate) ? maxCandidate : defaults.thresholds[key].max;
+    merged.thresholds[key] = { min, max };
+  }
+
+  for (const key of Object.keys(defaults.indicators)) {
+    const val = incoming.indicators?.[key];
+    merged.indicators[key] = typeof val === 'boolean' ? val : defaults.indicators[key];
+  }
+
+  return merged;
+}
+
+async function loadSettingsFromFile() {
+  try {
+    const raw = await fs.readFile(SETTINGS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    currentSettings = mergeSettings(defaultSettings, parsed);
+    console.log('[SETTINGS] Paramètres chargés depuis le fichier');
+  } catch (error) {
+    currentSettings = { ...defaultSettings };
+    console.log('[SETTINGS] Fichier absent ou invalide, utilisation des valeurs par défaut');
+  }
+}
+
+async function saveSettingsToFile() {
+  try {
+    await fs.writeFile(SETTINGS_FILE, JSON.stringify(currentSettings, null, 2), 'utf8');
+    console.log('[SETTINGS] Paramètres sauvegardés');
+  } catch (error) {
+    console.error('[SETTINGS] Erreur sauvegarde:', error.message);
+  }
+}
+
 client.on('connect', () => {
   console.log('[MQTT] Connecté au broker');
   io.emit('mqtt_status', { connected: true });
@@ -287,6 +349,16 @@ io.on('connection', (socket) => {
 });
 
 // API REST
+
+app.get('/api/settings', authenticateToken, (req, res) => {
+  res.json(currentSettings);
+});
+
+app.post('/api/settings', authenticateToken, async (req, res) => {
+  currentSettings = mergeSettings(defaultSettings, req.body || {});
+  await saveSettingsToFile();
+  res.json({ message: 'Paramètres mis à jour', settings: currentSettings });
+});
 
 // Historique depuis InfluxDB (dernières 100 mesures)
 app.get('/api/history', async (req, res) => {
@@ -591,6 +663,7 @@ const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0'; // Écouter sur toutes les interfaces réseau
 
 async function startServer() {
+  await loadSettingsFromFile();
   await initDatabases();
   
   server.listen(PORT, HOST, () => {
