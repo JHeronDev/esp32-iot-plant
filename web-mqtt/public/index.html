@@ -100,17 +100,53 @@
     </div>
   </section>
 
+  <section id="settings-section">
+    <h2>⚙️ Paramètres</h2>
+    <div class="settings-content">
+      <div class="setting-group">
+        <label>🌞 Luminosité (lux)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="lux-min" placeholder="Min" min="0">
+          <span class="range-sep">-</span>
+          <input type="number" id="lux-max" placeholder="Max" min="0">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>💧 Humidité du sol (%)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="soil-min" placeholder="Min" min="0" max="100">
+          <span class="range-sep">-</span>
+          <input type="number" id="soil-max" placeholder="Max" min="0" max="100">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>🌡️ Température (°C)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="temp-min" placeholder="Min">
+          <span class="range-sep">-</span>
+          <input type="number" id="temp-max" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>🎯 Pression (hPa)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="pressure-min" placeholder="Min">
+          <span class="range-sep">-</span>
+          <input type="number" id="pressure-max" placeholder="Max">
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 Sauvegarder</button>
+    </div>
+  </section>
+
   <section id="chart-section">
     <h2>📈 Historique</h2>
     <div id="chart-wrapper">
       <canvas id="chart"></canvas>
-    </div>
-  </section>
-
-  <section id="settings-section">
-    <h2>⚙️ Paramètres</h2>
-    <div class="settings-placeholder">
-      <p>Les paramètres seront bientôt disponibles.</p>
     </div>
   </section>
 </main>

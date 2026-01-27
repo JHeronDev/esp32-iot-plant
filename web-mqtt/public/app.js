@@ -198,6 +198,10 @@ function toggleSettingsSection() {
   const settingsSection = document.getElementById('settings-section');
   if (settingsSection) {
     settingsSection.classList.toggle('visible');
+    // Charger les paramètres s'ils ne sont pas chargés
+    if (settingsSection.classList.contains('visible')) {
+      loadSettings();
+    }
   }
 }
 
@@ -359,6 +363,82 @@ function loadChart() {
       renderChart(chartData);
     })
     .catch(err => console.error('Erreur chargement historique:', err));
+}
+
+// === Gestion des paramètres ===
+async function loadSettings() {
+  try {
+    const response = await fetch('/api/settings', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // Remplir les champs d'entrée avec les seuils
+      document.getElementById('lux-min').value = data.thresholds.lux.min;
+      document.getElementById('lux-max').value = data.thresholds.lux.max;
+      document.getElementById('soil-min').value = data.thresholds.soil.min;
+      document.getElementById('soil-max').value = data.thresholds.soil.max;
+      document.getElementById('temp-min').value = data.thresholds.temp.min;
+      document.getElementById('temp-max').value = data.thresholds.temp.max;
+      document.getElementById('pressure-min').value = data.thresholds.pressure.min;
+      document.getElementById('pressure-max').value = data.thresholds.pressure.max;
+    } else {
+      console.error('Erreur chargement paramètres');
+    }
+  } catch (err) {
+    console.error('Erreur:', err);
+  }
+}
+
+async function saveSettings() {
+  try {
+    const settings = {
+      thresholds: {
+        lux: {
+          min: parseInt(document.getElementById('lux-min').value),
+          max: parseInt(document.getElementById('lux-max').value)
+        },
+        soil: {
+          min: parseInt(document.getElementById('soil-min').value),
+          max: parseInt(document.getElementById('soil-max').value)
+        },
+        temp: {
+          min: parseFloat(document.getElementById('temp-min').value),
+          max: parseFloat(document.getElementById('temp-max').value)
+        },
+        pressure: {
+          min: parseInt(document.getElementById('pressure-min').value),
+          max: parseInt(document.getElementById('pressure-max').value)
+        }
+      },
+      indicators: {
+        lux: true,
+        soil: true,
+        temp: true,
+        pressure: true,
+        rssi: true
+      }
+    };
+
+    const response = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(settings)
+    });
+
+    if (response.ok) {
+      alert('✅ Paramètres sauvegardés avec succès!');
+    } else {
+      alert('❌ Erreur lors de la sauvegarde');
+    }
+  } catch (err) {
+    console.error('Erreur:', err);
+    alert('❌ Erreur serveur');
+  }
 }
 
 // Charger le graphique au démarrage

@@ -344,6 +344,72 @@ canvas {
   display: block;
 }
 
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setting-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.threshold-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.threshold-inputs input {
+  flex: 1;
+  padding: 0.5rem;
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.threshold-inputs input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16,185,129,0.2);
+}
+
+.range-sep {
+  color: #64748b;
+  font-weight: 600;
+  min-width: 1rem;
+  text-align: center;
+}
+
+.save-btn {
+  padding: 0.75rem;
+  background: #10b981;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+
+.save-btn:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+
 .settings-placeholder {
   padding: 1rem;
   background: rgba(255,255,255,0.05);
