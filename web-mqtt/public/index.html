@@ -478,13 +478,65 @@
     }
   }
 
+  function enableButtons() {
+    console.log('[DEBUG] enableButtons()');
+    const ledBtn = document.getElementById('led-btn');
+    const humBtn = document.getElementById('hum-btn');
+    const fanBtn = document.getElementById('fan-btn');
+    if (ledBtn) ledBtn.classList.remove('disabled');
+    if (humBtn) humBtn.classList.remove('disabled');
+    if (fanBtn) fanBtn.classList.remove('disabled');
+  }
+
+  function disableButtons() {
+    console.log('[DEBUG] disableButtons()');
+    const ledBtn = document.getElementById('led-btn');
+    const humBtn = document.getElementById('hum-btn');
+    const fanBtn = document.getElementById('fan-btn');
+    if (ledBtn) ledBtn.classList.add('disabled');
+    if (humBtn) humBtn.classList.add('disabled');
+    if (fanBtn) fanBtn.classList.add('disabled');
+  }
+
+  function showAuthInfo() {
+    const loginInputs = document.querySelector('.login-inputs');
+    const authStatus = document.getElementById('auth-status');
+    
+    if (loginInputs) loginInputs.style.display = 'none';
+    if (authStatus) {
+      authStatus.style.display = 'flex';
+      authStatus.innerHTML = `
+        <span class="user-chip">👤 ${currentUsername}</span>
+        <button class="logout-btn" onclick="logout()">Déconnexion</button>
+      `;
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    token = null;
+    currentUsername = null;
+    isAuthenticated = false;
+    
+    const loginInputs = document.querySelector('.login-inputs');
+    const authStatus = document.getElementById('auth-status');
+    
+    if (loginInputs) loginInputs.style.display = 'flex';
+    if (authStatus) authStatus.style.display = 'none';
+    document.getElementById('login-error').textContent = '';
+    
+    disableButtons();
+  }
+
   // Afficher l'utilisateur connecté si le token existe
   if (token) {
+    console.log('[DEBUG] Token trouvé:', token.substring(0, 20) + '...');
     isAuthenticated = true;
     showAuthInfo();
     enableButtons();
-    socket.emit('auth', token);
   } else {
+    console.log('[DEBUG] Pas de token');
     disableButtons();
   }
 
@@ -526,47 +578,6 @@
     } catch (err) {
       setLoginError('Erreur réseau');
     }
-  }
-
-  function showAuthInfo() {
-    const loginInputs = document.querySelector('.login-inputs');
-    const authStatus = document.getElementById('auth-status');
-    
-    loginInputs.style.display = 'none';
-    authStatus.style.display = 'flex';
-    authStatus.innerHTML = `
-      <span class="user-chip">👤 ${currentUsername}</span>
-      <button class="logout-btn" onclick="logout()">Déconnexion</button>
-    `;
-  }
-
-  function enableButtons() {
-    document.getElementById('led-btn').classList.remove('disabled');
-    document.getElementById('hum-btn').classList.remove('disabled');
-    document.getElementById('fan-btn').classList.remove('disabled');
-  }
-
-  function disableButtons() {
-    document.getElementById('led-btn').classList.add('disabled');
-    document.getElementById('hum-btn').classList.add('disabled');
-    document.getElementById('fan-btn').classList.add('disabled');
-  }
-
-  function logout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('username');
-    token = null;
-    currentUsername = null;
-    isAuthenticated = false;
-    
-    const loginInputs = document.querySelector('.login-inputs');
-    const authStatus = document.getElementById('auth-status');
-    
-    loginInputs.style.display = 'flex';
-    authStatus.style.display = 'none';
-    document.getElementById('login-error').textContent = '';
-    
-    disableButtons();
   }
 
   socket.on('connect', () => {
