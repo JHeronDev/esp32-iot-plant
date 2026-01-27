@@ -23,6 +23,12 @@ const pgPool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+// Gérer les erreurs du pool pour éviter les crashs
+pgPool.on('error', (err, client) => {
+  console.error('[PostgreSQL] Erreur inattendue:', err.message);
+  // Le pool va automatiquement recréer les connexions
+});
+
 // InfluxDB pour les données de télémétrie (optionnel)
 const influxURL = process.env.INFLUX_URL || 'http://localhost:8086';
 const influxToken = process.env.INFLUX_TOKEN || 'mytoken123456';
