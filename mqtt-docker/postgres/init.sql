@@ -10,15 +10,6 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN DEFAULT true
 );
 
--- Table des sessions
-CREATE TABLE IF NOT EXISTS sessions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Table des dispositifs ESP32
 CREATE TABLE IF NOT EXISTS devices (
   id SERIAL PRIMARY KEY,
@@ -44,8 +35,6 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 
 -- Index pour performance
-CREATE INDEX idx_sessions_token ON sessions(token);
-CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX idx_devices_user_id ON devices(user_id);
 CREATE INDEX idx_devices_mac_address ON devices(mac_address);
 CREATE INDEX idx_users_email ON users(email);

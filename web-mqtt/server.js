@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 // const nodemailer = require('nodemailer');
@@ -11,6 +12,7 @@ const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
 // Configuration depuis variables d'environnement
 const MQTT_BROKER = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const SETTINGS_FILE = process.env.SETTINGS_FILE || './settings.json';
 
 // PostgreSQL pour les comptes utilisateurs
@@ -78,8 +80,8 @@ const io = new Server(server, {
 app.use(express.static('public'));
 app.use(express.json());
 
-// Middleware d'authentification
-async function authenticateToken(req, res, next) {
+// Middleware d'authentification JWT
+function authenticateToken(req, res, next) {
   const token = req.headers['authorization']?.split(' ')[1];
   
   if (!token) {
@@ -87,19 +89,11 @@ async function authenticateToken(req, res, next) {
   }
 
   try {
-    const result = await pgPool.query(
-      'SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()',
-      [token]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Token invalide ou expiré' });
-    }
-    
-    req.user = result.rows[0];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(401).json({ error: 'Token invalide ou expiré' });
   }
 }
 
@@ -486,13 +480,11 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
-    // Créer un token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
-
-    await pgPool.query(
-      'INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [user.id, token, expiresAt]
+    // Créer un JWT valide 7 jours
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
     // Mettre à jour last_login

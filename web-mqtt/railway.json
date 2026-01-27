@@ -19,8 +19,9 @@
       "description": "MQTT broker URL",
       "value": "mqtt://localhost:1883"
     },
-
-    "INFLUX_URL": {
+    "JWT_SECRET": {
+      "description": "JWT secret key for token signing"
+    },
       "description": "InfluxDB URL",
       "value": "http://localhost:8086"
     },
