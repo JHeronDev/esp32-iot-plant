@@ -1,24 +1,12 @@
-# Multi-service container for MQTT infrastructure
-FROM docker:latest
+# Mosquitto MQTT Broker
+FROM eclipse-mosquitto:latest
 
-WORKDIR /app
+# Copier la configuration personnalisée
+COPY mosquitto/mosquitto.conf /mosquitto/config/mosquitto.conf
 
-# Copier la configuration
-COPY docker-compose.yml .
-COPY mosquitto/ ./mosquitto/
-COPY postgres/ ./postgres/
-
-# Exposer les ports
-# 1883 - MQTT
-# 9001 - MQTT WebSocket
-# 5432 - PostgreSQL
-# 8086 - InfluxDB
-
-EXPOSE 1883 9001 5432 8086
+# Exposer les ports MQTT
+EXPOSE 1883 9001
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD docker ps --filter "name=mqtt-broker" --filter "status=running" | grep -q mqtt-broker || exit 1
-
-# Démarrer les services
-CMD ["docker-compose", "up"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD mosquitto_sub -t "$SYS/#" -C 1 -i healthcheck -W 3 || exit 1
