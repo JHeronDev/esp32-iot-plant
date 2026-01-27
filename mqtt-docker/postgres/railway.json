@@ -1,22 +1,14 @@
 {
   "name": "ESP32 IoT Plant Monitor - PostgreSQL",
-  "description": "PostgreSQL database for user accounts and configuration",
-  "builder": "dockerfile",
-  "dockerfile": {
-    "path": "mqtt-docker/postgres/Dockerfile",
-    "buildContext": "."
+  "description": "PostgreSQL database managed by Railway (persistent)",
+  "builder": "nixpack",
+  "nixpacksPlan": {
+    "providers": ["postgresql"]
   },
   "variables": {
-    "POSTGRES_DB": {
+    "POSTGRES_DATABASE": {
       "description": "Database name",
       "value": "iot_plant"
-    },
-    "POSTGRES_USER": {
-      "description": "Database user",
-      "value": "iot_user"
-    },
-    "POSTGRES_PASSWORD": {
-      "description": "Database password"
     }
   }
 }

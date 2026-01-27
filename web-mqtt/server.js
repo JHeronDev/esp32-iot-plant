@@ -14,16 +14,28 @@ const MQTT_BROKER = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
 const SETTINGS_FILE = process.env.SETTINGS_FILE || './settings.json';
 
 // PostgreSQL pour les comptes utilisateurs
-const pgPool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: process.env.POSTGRES_PORT || 5432,
-  database: process.env.POSTGRES_DATABASE || 'iot_plant',
-  user: process.env.POSTGRES_USER || 'iot_user',
-  password: process.env.POSTGRES_PASSWORD || 'iot_password',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Utiliser DATABASE_URL si disponible (Railway), sinon construire manuellement
+const pgPool = new Pool(
+  process.env.DATABASE_URL ? 
+  {
+    connectionString: process.env.DATABASE_URL,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+    ssl: { rejectUnauthorized: false }
+  }
+  : 
+  {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: process.env.POSTGRES_PORT || 5432,
+    database: process.env.POSTGRES_DATABASE || 'iot_plant',
+    user: process.env.POSTGRES_USER || 'iot_user',
+    password: process.env.POSTGRES_PASSWORD || 'iot_password',
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  }
+);
 
 // Gérer les erreurs du pool pour éviter les crashs
 pgPool.on('error', (err, client) => {

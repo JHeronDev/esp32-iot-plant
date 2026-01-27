@@ -20,8 +20,8 @@
       "value": "mqtt://localhost:1883"
     },
     "POSTGRES_HOST": {
-      "description": "PostgreSQL host",
-      "value": "localhost"
+      "description": "PostgreSQL host (Railway service)",
+      "value": "postgres.railway.internal"
     },
     "POSTGRES_PORT": {
       "description": "PostgreSQL port",
@@ -29,14 +29,14 @@
     },
     "POSTGRES_DATABASE": {
       "description": "PostgreSQL database name",
-      "value": "iot_plant"
+      "value": "railway"
     },
     "POSTGRES_USER": {
-      "description": "PostgreSQL user",
-      "value": "iot_user"
+      "description": "PostgreSQL user (Railway service)",
+      "value": "postgres"
     },
     "POSTGRES_PASSWORD": {
-      "description": "PostgreSQL password"
+      "description": "PostgreSQL password (Railway service)"
     },
     "INFLUX_URL": {
       "description": "InfluxDB URL",
