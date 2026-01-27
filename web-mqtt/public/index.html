@@ -450,6 +450,13 @@
       <canvas id="chart"></canvas>
     </div>
   </section>
+
+  <section id="settings-section" style="display: none;">
+    <h2>⚙️ Paramètres</h2>
+    <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+      <p style="color: #94a3b8; margin-bottom: 1rem;">Les paramètres seront bientôt disponibles.</p>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -621,6 +628,17 @@
       btn.classList.remove('on');
     }
     socket.emit('cmd', states[type] ? cmd + '_ON' : cmd + '_OFF');
+  }
+
+  function toggleSettingsSection() {
+    if (!isAuthenticated) {
+      alert('Veuillez vous connecter pour accéder aux paramètres');
+      return;
+    }
+    const settingsSection = document.getElementById('settings-section');
+    if (settingsSection) {
+      settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
+    }
   }
 
   socket.on('telemetry', d => {
