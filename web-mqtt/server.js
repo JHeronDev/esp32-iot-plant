@@ -317,18 +317,24 @@ io.on('connection', (socket) => {
   // Authentification WebSocket
   socket.on('auth', async (token) => {
     try {
+      // Vérifier le JWT
+      const decoded = jwt.verify(token, JWT_SECRET);
+      
+      // Vérifier que l'utilisateur existe et est actif
       const result = await pgPool.query(
-        'SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()',
-        [token]
+        'SELECT id, username FROM users WHERE id = $1 AND is_active = true',
+        [decoded.id]
       );
       
       if (result.rows.length > 0) {
         authenticatedUser = result.rows[0];
         socket.emit('auth_success', { username: authenticatedUser.username });
+        console.log('[WebSocket] Authentifié:', authenticatedUser.username);
       } else {
-        socket.emit('auth_error', { message: 'Token invalide' });
+        socket.emit('auth_error', { message: 'Utilisateur non trouvé ou inactif' });
       }
     } catch (error) {
+      console.error('[WebSocket] Erreur auth:', error.message);
       socket.emit('auth_error', { message: 'Erreur serveur' });
     }
   });

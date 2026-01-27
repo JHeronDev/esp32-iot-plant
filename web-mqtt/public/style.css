@@ -1,0 +1,356 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+header {
+  background: #1e293b;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+h1 { font-size: 1.5rem; font-weight: 600; }
+
+#status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid #ef4444;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  color: #ef4444;
+}
+
+#status.connected {
+  background: rgba(16,185,129,0.1);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+#status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+section {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+section:first-of-type {
+  flex-shrink: 0;
+}
+
+section:last-of-type {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+#sensors {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.sensor-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bubble {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.02);
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  transition: all 0.3s;
+}
+
+.bubble.healthy { border-color: #10b981; }
+.bubble.warning { border-color: #f59e0b; }
+.bubble.critical { border-color: #ef4444; }
+
+.bubble label {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.bubble .value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.bubble .unit {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.btn-circle {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  background: #475569;
+  border: 2px solid #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.btn-circle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(100,116,139,0.4);
+}
+
+.btn-circle.on {
+  background: #10b981;
+  border-color: #059669;
+}
+
+.btn-circle.on:hover {
+  box-shadow: 0 0 20px rgba(16,185,129,0.5);
+}
+
+.btn-circle .icon {
+  font-size: 1.5rem;
+  filter: grayscale(100%);
+  opacity: 0.6;
+}
+
+.btn-circle.on .icon {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
+.btn-circle .label {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+  text-align: center;
+}
+
+.btn-circle.on .label {
+  color: rgba(255,255,255,0.95);
+}
+
+#chart-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#chart-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+canvas {
+  max-height: 100% !important;
+  width: 100% !important;
+}
+
+/* Login Panel */
+#login-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 0.875rem;
+}
+
+.login-inputs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.login-inputs input {
+  flex: 1;
+  padding: 0.5rem;
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+}
+
+.login-inputs input:focus {
+  outline: none;
+  border-color: #10b981;
+}
+
+.login-btn, .logout-btn {
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+}
+
+.login-btn:hover {
+  background: #059669;
+}
+
+.logout-btn {
+  background: #ef4444;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+}
+
+#login-error {
+  color: #ef4444;
+  font-size: 0.7rem;
+  text-align: center;
+  display: none;
+  min-height: 0.9rem;
+}
+
+#auth-status {
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.btn-circle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-circle.disabled,
+.btn-circle.disabled:hover {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  flex: 1;
+}
+
+.ghost-btn {
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ghost-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+}
+
+#settings-section {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
+  display: none;
+}
+
+#settings-section.visible {
+  display: block;
+}
+
+.settings-placeholder {
+  padding: 1rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.settings-placeholder p {
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
