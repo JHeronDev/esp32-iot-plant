@@ -23,15 +23,25 @@ const pgPool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// InfluxDB pour les données de télémétrie
+// InfluxDB pour les données de télémétrie (optionnel)
 const influxURL = process.env.INFLUX_URL || 'http://localhost:8086';
 const influxToken = process.env.INFLUX_TOKEN || 'mytoken123456';
 const influxOrg = process.env.INFLUX_ORG || 'iot_org';
 const influxBucket = process.env.INFLUX_BUCKET || 'plant_data';
 
-const influxDB = new InfluxDB({ url: influxURL, token: influxToken });
-const writeApi = influxDB.getWriteApi(influxOrg, influxBucket, 'ms');
-const queryApi = influxDB.getQueryApi(influxOrg);
+let writeApi = null;
+let queryApi = null;
+
+// Vérifier que l'URL InfluxDB est valide avant de créer le client
+try {
+  new URL(influxURL);
+  const influxDB = new InfluxDB({ url: influxURL, token: influxToken });
+  writeApi = influxDB.getWriteApi(influxOrg, influxBucket, 'ms');
+  queryApi = influxDB.getQueryApi(influxOrg);
+  console.log('[InfluxDB] Client initialisé');
+} catch (error) {
+  console.log('[InfluxDB] Désactivé - URL invalide ou pas configuré:', error.message);
+}
 
 const TOPIC_TELEMETRY = 'tp/esp32/telemetry';
 const TOPIC_CMD = 'tp/esp32/cmd';
@@ -138,6 +148,8 @@ async function initDatabases() {
 
 // Sauvegarde dans InfluxDB
 function saveTelemetryToInflux(data) {
+  if (!writeApi) return; // InfluxDB désactivé
+  
   try {
     const point = new Point('plant_telemetry')
       .floatField('luminosite', data.luminosite)
@@ -275,6 +287,10 @@ io.on('connection', (socket) => {
 
 // Historique depuis InfluxDB (dernières 100 mesures)
 app.get('/api/history', async (req, res) => {
+  if (!queryApi) {
+    return res.json({ message: 'InfluxDB désactivé', data: [] });
+  }
+
   try {
     const limit = parseInt(req.query.limit) || 100;
     const query = `
@@ -318,6 +334,10 @@ app.get('/api/history', async (req, res) => {
 
 // Statistiques depuis InfluxDB
 app.get('/api/stats', async (req, res) => {
+  if (!queryApi) {
+    return res.json({ message: 'InfluxDB désactivé', stats: {} });
+  }
+
   try {
     const query = `
       from(bucket: "${influxBucket}")
