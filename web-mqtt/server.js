@@ -68,7 +68,7 @@ try {
 const TOPIC_TELEMETRY = 'tp/esp32/telemetry';
 const TOPIC_CMD = 'tp/esp32/cmd';
 let lastTelemetrySent = 0;
-const MIN_SEND_INTERVAL = 5000; // Envoyer max 1 msg tous les 5s
+const MIN_SEND_INTERVAL = 3000; // Envoyer max 1 msg tous les 3s
 
 const app = express();
 const server = http.createServer(app);

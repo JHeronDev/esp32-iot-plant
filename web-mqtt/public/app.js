@@ -172,7 +172,7 @@ function update(id, val, min, max) {
   else if (Math.abs(val - min) < (max - min) * 0.2 || Math.abs(val - max) < (max - min) * 0.2) bubble.classList.add('warning');
   else bubble.classList.add('critical');
   
-  el.textContent = (id === 'rssi' || id === 'pressure') ? Math.round(val) : val.toFixed(1);
+  el.textContent = Math.round(val);
 }
 
 function toggle(type, cmd) {

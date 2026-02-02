@@ -47,7 +47,7 @@ bool humidifierOn = false;
 unsigned long lastSend = 0;
 unsigned long lastRetry = 0;
 const int retryInterval = 10000;    // Tentative connexion toutes les 10s
-const int sendInterval = 10000;     // Envoyer les données toutes les 10s
+const int sendInterval = 5000;      // Envoyer les données toutes les 5s
 
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
@@ -199,22 +199,22 @@ void loop() {
     lastSend = now;
     
     // Lire les capteurs avec vérifications
-    float lux = bh1750_ok ? lightMeter.readLightLevel() : -1.0;
+    int lux = bh1750_ok ? (int)lightMeter.readLightLevel() : -1;
     int soilRaw = analogRead(SOIL_PIN);
-    float soilPercent = map(soilRaw, 4095, 0, 0, 100);
-    float temperature = bme280_ok ? bme.readTemperature() : -999.0;
-    float humidity = bme280_ok ? bme.readHumidity() : -1.0;
-    float pressurePa = bme280_ok ? bme.readPressure() : 0.0;
-    float pressurehPa = pressurePa / 100.0;
+    int soilPercent = map(soilRaw, 4095, 0, 0, 100);
+    int temperature = bme280_ok ? (int)bme.readTemperature() : -999;
+    int humidity = bme280_ok ? (int)bme.readHumidity() : -1;
+    int pressurePa = bme280_ok ? (int)bme.readPressure() : 0;
+    int pressurehPa = pressurePa / 100;
 
     // Debug en série
     if (lux < 0) Serial.println("[ERROR] BH1750 pas disponible - vérifier connexion I2C");
 
     String payload = "{\"luminosite\":" + String(lux) + 
                      ",\"humidite_sol\":" + String(soilPercent) + 
-                     ",\"temperature\":" + String(temperature, 2) +
-                     ",\"humidite_air\":" + String(humidity, 2) +
-                     ",\"pressure\":" + String(pressurehPa, 2) +
+                     ",\"temperature\":" + String(temperature) +
+                     ",\"humidite_air\":" + String(humidity) +
+                     ",\"pressure\":" + String(pressurehPa) +
                      ",\"rssi\":" + String(WiFi.RSSI()) + 
                      ",\"led_on\":" + (ledOn ? "true" : "false") +
                      ",\"fan_on\":" + (fanOn ? "true" : "false") +
