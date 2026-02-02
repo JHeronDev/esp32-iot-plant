@@ -211,6 +211,7 @@ socket.on('telemetry', d => {
   // Mise à jour des capteurs
   update('lux', d.luminosite || 0, 500, 10000);
   update('soil', d.humidite_sol || 0, 30, 70);
+  update('humidity', d.humidite_air || 0, 30, 70);
   update('temp', d.temperature || 0, 15, 30);
   update('pressure', d.pressure || 0, 990, 1030);
   update('rssi', d.rssi || -100, -70, -50);
@@ -221,6 +222,7 @@ socket.on('telemetry', d => {
       timestamp: new Date().toISOString(),
       luminosite: d.luminosite || 0,
       humidite_sol: d.humidite_sol || 0,
+      humidite_air: d.humidite_air || 0,
       temperature: d.temperature || 0,
       pressure: d.pressure || 0,
       rssi: d.rssi || 0,
@@ -268,8 +270,9 @@ function renderChart(data) {
     chart.data.labels = labels;
     chart.data.datasets[0].data = data.map(d => d.luminosite);
     chart.data.datasets[1].data = data.map(d => d.humidite_sol);
-    chart.data.datasets[2].data = data.map(d => d.temperature || 0);
-    chart.data.datasets[3].data = data.map(d => d.pressure || 0);
+    chart.data.datasets[2].data = data.map(d => d.humidite_air || 0);
+    chart.data.datasets[3].data = data.map(d => d.temperature || 0);
+    chart.data.datasets[4].data = data.map(d => d.pressure || 0);
     chart.update('none');
     return;
   }
@@ -291,10 +294,21 @@ function renderChart(data) {
           yAxisID: 'y'
         },
         {
-          label: 'Humidité (%)',
+          label: 'Humidité sol (%)',
           data: data.map(d => d.humidite_sol),
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59,130,246,0.05)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Humidité air (%)',
+          data: data.map(d => d.humidite_air || 0),
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6,182,212,0.05)',
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.4,

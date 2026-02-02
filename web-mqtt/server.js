@@ -167,7 +167,9 @@ function saveTelemetryToInflux(data) {
     const point = new Point('plant_telemetry')
       .floatField('luminosite', data.luminosite)
       .floatField('humidite_sol', data.humidite_sol)
-      .intField('co2', data.co2)
+      .floatField('humidite_air', data.humidite_air || 0)
+      .floatField('temperature', data.temperature || 0)
+      .floatField('pressure', data.pressure || 0)
       .intField('rssi', data.rssi)
       .timestamp(new Date());
 
@@ -286,6 +288,7 @@ client.on('message', async (topic, message) => {
       // Convertir en entiers
       data.luminosite = Math.round(data.luminosite);
       data.humidite_sol = Math.round(data.humidite_sol);
+      data.humidite_air = Math.round(data.humidite_air || 0);
       data.temperature = Math.round(data.temperature);
       data.pressure = Math.round(data.pressure);
       data.rssi = Math.round(data.rssi);
@@ -392,7 +395,9 @@ app.get('/api/history', async (req, res) => {
           timestamp: o._time,
           luminosite: o.luminosite || 0,
           humidite_sol: o.humidite_sol || 0,
-          co2: o.co2 || 0,
+          humidite_air: o.humidite_air || 0,
+          temperature: o.temperature || 0,
+          pressure: o.pressure || 0,
           rssi: o.rssi || 0,
           led_on: o.led_on || false,
           fan_on: o.fan_on || false,
@@ -442,8 +447,10 @@ app.get('/api/stats', async (req, res) => {
       complete() {
         res.json({
           avg_lux: stats.luminosite || 0,
-          avg_humidity: stats.humidite_sol || 0,
-          avg_co2: stats.co2 || 0,
+          avg_humidity_soil: stats.humidite_sol || 0,
+          avg_humidity_air: stats.humidite_air || 0,
+          avg_temperature: stats.temperature || 0,
+          avg_pressure: stats.pressure || 0,
           avg_rssi: stats.rssi || 0
         });
       }

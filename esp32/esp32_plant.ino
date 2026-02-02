@@ -2,7 +2,8 @@
 #include <PubSubClient.h>
 #include <Wire.h>
 #include <BH1750.h>
-#include <Adafruit_BMP280.h>
+#include <Adafruit_BME280.h>
+#include <adafruit_sensor.h>
 
 // ================= CONFIGURATION MQTT =================
 // Railway TCP Proxy (voir Settings -> Networking)
@@ -16,11 +17,11 @@ const char* MQTT_PASS = "";
 #define I2C_SDA 22
 #define I2C_SCL 21
 #define SOIL_PIN 34
-#define LED_PIN 2
+#define LED_PIN 10
 #define FAN_PIN 14
 #define HUMIDIFIER_PIN 27
-#define CTP_SDA 18
-#define CTP_SCL 19
+#define CTP_SDA 2
+#define CTP_SCL 15
 
 const char* WIFI_SSID = "CFAINSTA_STUDENTS";
 const char* WIFI_PASS = "Cf@InSt@-$tUd3nT";
@@ -30,12 +31,11 @@ const char* TOPIC_CMD       = "tp/esp32/cmd";
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 BH1750 lightMeter;
-Adafruit_BMP280 bmp; // I2C
+Adafruit_BME280 bme; // I2C
 
 // Flags pour suivi des capteurs
 bool bh1750_ok = false;
-bool bmp280_ok = false;
-
+bool bme280_ok = false;
 // Pression au niveau de la mer (hPa) pour calcul altitude
 const float SEA_LEVEL_HPA = 1013.25;
 
@@ -48,6 +48,7 @@ unsigned long lastSend = 0;
 unsigned long lastRetry = 0;
 const int retryInterval = 10000;    // Tentative connexion toutes les 10s
 const int sendInterval = 10000;     // Envoyer les données toutes les 10s
+
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
   String msg = "";
@@ -161,58 +162,25 @@ void setup() {
   mqtt.setKeepAlive(60);
   mqtt.setSocketTimeout(15);
 
-  // Scanner I2C pour trouver les capteurs
-  Serial.println("[I2C] Scan des appareils connectés...");
-  for (int addr = 0x01; addr < 0x7F; addr++) {
-    Wire.beginTransmission(addr);
-    byte error = Wire.endTransmission();
-    if (error == 0) {
-      Serial.print("  -> Trouvé à 0x");
-      Serial.println(addr, HEX);
-    }
-  }
-
-  // Init BH1750 (adresse par défaut 0x23)
-  Serial.print("[BH1750] Initialisation... ");
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
-    Serial.println("OK ✓");
-    bh1750_ok = true;
+  lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
+  bh1750_ok = true;
+  
+  // Init BMP280
+  bool ok = bme.begin(0x76);
+  if (!ok) ok = bme.begin(0x77);
+  if (!ok) {
+    Serial.println("Erreur: BME280 introuvable en I2C (0x76/0x77). Vérifie câblage.");
   } else {
-    Serial.println("ÉCHEC");
-    // Essayer l'autre adresse (0x5C)
-    Serial.print("[BH1750] Tentative adresse 0x5C... ");
-    if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x5C, &Wire)) {
-      Serial.println("OK ✓");
-      bh1750_ok = true;
-    } else {
-      Serial.println("ÉCHEC - BH1750 introuvable");
-    }
-  }
-  
-  // Init BMP280 - Chercher automatiquement l'adresse
-  Serial.print("[BMP280] Recherche... ");
-  bool bmp_found = false;
-  
-  for (int addr = 0x76; addr <= 0x77; addr++) {
-    if (bmp.begin(addr)) {
-      Serial.print("Trouvé à 0x");
-      Serial.println(addr, HEX);
-      bmp280_ok = true;
-      bmp_found = true;
-      
-      bmp.setSampling(
-        Adafruit_BMP280::MODE_NORMAL,
-        Adafruit_BMP280::SAMPLING_X2,
-        Adafruit_BMP280::SAMPLING_X16,
-        Adafruit_BMP280::FILTER_X16,
-        Adafruit_BMP280::STANDBY_MS_500
-      );
-      break;
-    }
-  }
-  
-  if (!bmp_found) {
-    Serial.println("ÉCHEC - BMP280 introuvable");
+    bme280_ok = true;
+    bme.setSampling(
+      Adafruit_BME280::MODE_NORMAL,
+      Adafruit_BME280::SAMPLING_X2,   // Température
+      Adafruit_BME280::SAMPLING_X16,  // Pression
+      Adafruit_BME280::SAMPLING_X1,   // Humidité
+      Adafruit_BME280::FILTER_X16,    // Filtre
+      Adafruit_BME280::STANDBY_MS_500
+    );
+    Serial.println("BME280 OK.");
   }
   
   Serial.println("\nPrêt !");
@@ -228,12 +196,15 @@ void loop() {
   // 3. Envoi des données
   unsigned long now = millis();
   if (now - lastSend >= sendInterval) {
+    lastSend = now;
+    
     // Lire les capteurs avec vérifications
     float lux = bh1750_ok ? lightMeter.readLightLevel() : -1.0;
     int soilRaw = analogRead(SOIL_PIN);
     float soilPercent = map(soilRaw, 4095, 0, 0, 100);
-    float temperature = bmp280_ok ? bmp.readTemperature() : -999.0;
-    float pressurePa = bmp280_ok ? bmp.readPressure() : 0.0;
+    float temperature = bme280_ok ? bme.readTemperature() : -999.0;
+    float humidity = bme280_ok ? bme.readHumidity() : -1.0;
+    float pressurePa = bme280_ok ? bme.readPressure() : 0.0;
     float pressurehPa = pressurePa / 100.0;
 
     // Debug en série
@@ -242,6 +213,7 @@ void loop() {
     String payload = "{\"luminosite\":" + String(lux) + 
                      ",\"humidite_sol\":" + String(soilPercent) + 
                      ",\"temperature\":" + String(temperature, 2) +
+                     ",\"humidite_air\":" + String(humidity, 2) +
                      ",\"pressure\":" + String(pressurehPa, 2) +
                      ",\"rssi\":" + String(WiFi.RSSI()) + 
                      ",\"led_on\":" + (ledOn ? "true" : "false") +
