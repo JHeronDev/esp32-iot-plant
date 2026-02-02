@@ -23,7 +23,6 @@ const char* MQTT_PASS = "";  // Laisser vide si pas de password
 
 const char* WIFI_SSID = "CFAINSTA_STUDENTS";
 const char* WIFI_PASS = "Cf@InSt@-$tUd3nT";
-const int   MQTT_PORT  = 1883;
 const char* TOPIC_TELEMETRY = "tp/esp32/telemetry";
 const char* TOPIC_CMD       = "tp/esp32/cmd";
 
@@ -80,7 +79,7 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
 void tryConnectMQTT() {
   if (!mqtt.connected() && millis() - lastRetry > retryInterval) {
     lastRetry = millis();
-    Serial.print("[MQTT] Tentative de connexion à ");
+    Serial.print("[MQTT] Connexion à ");
     Serial.print(MQTT_HOST);
     Serial.print(":");
     Serial.print(MQTT_PORT);
@@ -100,25 +99,61 @@ void tryConnectMQTT() {
       mqtt.subscribe(TOPIC_CMD);
       Serial.println("OK ✓");
     } else {
-      Serial.print("ÉCHEC (code: ");
-      Serial.print(mqtt.state());
-      Serial.println(")");
+      int code = mqtt.state();
+      Serial.print("ÉCHEC (");
+      Serial.print(code);
+      Serial.print(") ");
+      
+      // Diagnostics détaillés
+      switch(code) {
+        case -4: Serial.println("TIMEOUT - Serveur ne répond pas"); break;
+        case -3: Serial.println("CONNEXION PERDUE"); break;
+        case -2: 
+          Serial.println("ÉCHEC RÉSEAU - Vérifier:");
+          Serial.println("  1. Le hostname est-il résolvable? (ping)");
+          Serial.println("  2. Le port est-il correct?");
+          Serial.println("  3. Railway expose-t-il le port 1883 publiquement?");
+          break;
+        case -1: Serial.println("DÉCONNECTÉ"); break;
+        case 1: Serial.println("PROTOCOLE MQTT INVALIDE"); break;
+        case 2: Serial.println("CLIENT_ID REJETÉ"); break;
+        case 3: Serial.println("SERVEUR INDISPONIBLE"); break;
+        case 4: Serial.println("AUTHENTIFICATION ÉCHOUÉE"); break;
+        case 5: Serial.println("NON AUTORISÉ"); break;
+        default: Serial.println("ERREUR INCONNUE");
+      }
     }
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
+  Serial.println("\n\n=== ESP32 IoT Plant Monitor ===");
+  
   Wire.begin(I2C_SDA, I2C_SCL);
   pinMode(LED_PIN, OUTPUT);
   pinMode(FAN_PIN, OUTPUT);
   pinMode(HUMIDIFIER_PIN, OUTPUT);
 
-  // Timeouts WiFi (2s pour laisser le temps à la connexion TCP)
-  espClient.setTimeout(2000); 
-
+  Serial.print("[WiFi] Connexion à ");
+  Serial.print(WIFI_SSID);
+  Serial.print("... ");
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println(" OK");
+  Serial.print("[WiFi] IP: ");
+  Serial.println(WiFi.localIP());
+  
+  Serial.print("[MQTT] Configuration: ");
+  Serial.print(MQTT_HOST);
+  Serial.print(":");
+  Serial.println(MQTT_PORT);
+  
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
+  mqtt.setCallback(onMessage);
+  mqtt.setKeepAlive(60);
+  mqtt.setSocketTimeout(15);
   
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMessage);
