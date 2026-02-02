@@ -165,22 +165,12 @@ void setup() {
   lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
   bh1750_ok = true;
   
-  // Init BMP280
-  bool ok = bme.begin(0x76);
-  if (!ok) ok = bme.begin(0x77);
-  if (!ok) {
-    Serial.println("Erreur: BME280 introuvable en I2C (0x76/0x77). Vérifie câblage.");
-  } else {
+  // Init BME280
+  if (bme.begin(0x76) || bme.begin(0x77)) {
     bme280_ok = true;
-    bme.setSampling(
-      Adafruit_BME280::MODE_NORMAL,
-      Adafruit_BME280::SAMPLING_X2,   // Température
-      Adafruit_BME280::SAMPLING_X16,  // Pression
-      Adafruit_BME280::SAMPLING_X1,   // Humidité
-      Adafruit_BME280::FILTER_X16,    // Filtre
-      Adafruit_BME280::STANDBY_MS_500
-    );
     Serial.println("BME280 OK.");
+  } else {
+    Serial.println("Erreur: BME280 introuvable en I2C (0x76/0x77). Vérifie câblage.");
   }
   
   Serial.println("\nPrêt !");
@@ -199,13 +189,24 @@ void loop() {
     lastSend = now;
     
     // Lire les capteurs avec vérifications
-    int lux = bh1750_ok ? (int)lightMeter.readLightLevel() : -1;
+    int lux = -1;
+    if (bh1750_ok) {
+      float luxFloat = lightMeter.readLightLevel();
+      lux = (int)luxFloat;
+    }
+    
     int soilRaw = analogRead(SOIL_PIN);
     int soilPercent = map(soilRaw, 4095, 0, 0, 100);
-    int temperature = bme280_ok ? (int)bme.readTemperature() : -999;
-    int humidity = bme280_ok ? (int)bme.readHumidity() : -1;
-    int pressurePa = bme280_ok ? (int)bme.readPressure() : 0;
-    int pressurehPa = pressurePa / 100;
+    
+    int temperature = -999;
+    int humidity = -1;
+    int pressurehPa = 0;
+    if (bme280_ok) {
+      temperature = (int)bme.readTemperature();
+      humidity = (int)bme.readHumidity();
+      int pressurePa = (int)bme.readPressure();
+      pressurehPa = pressurePa / 100;
+    }
 
     // Debug en série
     if (lux < 0) Serial.println("[ERROR] BH1750 pas disponible - vérifier connexion I2C");
@@ -223,5 +224,5 @@ void loop() {
     if (mqtt.connected()) mqtt.publish(TOPIC_TELEMETRY, payload.c_str());
   }
   
-  delay(100); // Petit délai pour ne pas surcharger le CPU
+  delay(50); // Petit délai pour ne pas surcharger le CPU
 }
