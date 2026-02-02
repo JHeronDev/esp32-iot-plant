@@ -4,12 +4,13 @@
 #include <BH1750.h>
 #include <Adafruit_BMP280.h>
 
-// ================= CONFIGURATION RAILWAY =================
-const char* MQTT_HOST = "mqtt-production-9d1e.up.railway.app";
-const int   MQTT_PORT = 1883;
+// ================= CONFIGURATION MQTT =================
+// Railway TCP Proxy (voir Settings -> Networking)
+const char* MQTT_HOST = "ballast.proxy.rlwy.net";
+const int   MQTT_PORT = 18302;
 // Authentification MQTT
-const char* MQTT_USER = "";  // Laisser vide si pas de username
-const char* MQTT_PASS = "";  // Laisser vide si pas de password
+const char* MQTT_USER = "";  // Laisser vide (allow_anonymous true)
+const char* MQTT_PASS = "";
 // ==========================================================
 
 #define I2C_SDA 22
@@ -31,6 +32,10 @@ PubSubClient mqtt(espClient);
 BH1750 lightMeter;
 Adafruit_BMP280 bmp; // I2C
 
+// Flags pour suivi des capteurs
+bool bh1750_ok = false;
+bool bmp280_ok = false;
+
 // Pression au niveau de la mer (hPa) pour calcul altitude
 const float SEA_LEVEL_HPA = 1013.25;
 
@@ -41,7 +46,8 @@ bool humidifierOn = false;
 
 unsigned long lastSend = 0;
 unsigned long lastRetry = 0;
-const int retryInterval = 5000; // Tentative toutes les 5s
+const int retryInterval = 10000;    // Tentative connexion toutes les 10s
+const int sendInterval = 10000;     // Envoyer les données toutes les 10s
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
   String msg = "";
@@ -154,26 +160,59 @@ void setup() {
   mqtt.setCallback(onMessage);
   mqtt.setKeepAlive(60);
   mqtt.setSocketTimeout(15);
-  
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-  mqtt.setCallback(onMessage);
 
-  lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
-  
-  // Init BMP280
-  bool ok = bmp.begin(0x76);
-  if (!ok) ok = bmp.begin(0x77);
-  if (!ok) {
-    Serial.println("Erreur: BMP280 introuvable en I2C (0x76/0x77). Vérifie câblage.");
+  // Scanner I2C pour trouver les capteurs
+  Serial.println("[I2C] Scan des appareils connectés...");
+  for (int addr = 0x01; addr < 0x7F; addr++) {
+    Wire.beginTransmission(addr);
+    byte error = Wire.endTransmission();
+    if (error == 0) {
+      Serial.print("  -> Trouvé à 0x");
+      Serial.println(addr, HEX);
+    }
+  }
+
+  // Init BH1750 (adresse par défaut 0x23)
+  Serial.print("[BH1750] Initialisation... ");
+  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
+    Serial.println("OK ✓");
+    bh1750_ok = true;
   } else {
-    bmp.setSampling(
-      Adafruit_BMP280::MODE_NORMAL,
-      Adafruit_BMP280::SAMPLING_X2,   // Température
-      Adafruit_BMP280::SAMPLING_X16,  // Pression
-      Adafruit_BMP280::FILTER_X16,
-      Adafruit_BMP280::STANDBY_MS_500
-    );
-    Serial.println("BMP280 OK.");
+    Serial.println("ÉCHEC");
+    // Essayer l'autre adresse (0x5C)
+    Serial.print("[BH1750] Tentative adresse 0x5C... ");
+    if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x5C, &Wire)) {
+      Serial.println("OK ✓");
+      bh1750_ok = true;
+    } else {
+      Serial.println("ÉCHEC - BH1750 introuvable");
+    }
+  }
+  
+  // Init BMP280 - Chercher automatiquement l'adresse
+  Serial.print("[BMP280] Recherche... ");
+  bool bmp_found = false;
+  
+  for (int addr = 0x76; addr <= 0x77; addr++) {
+    if (bmp.begin(addr)) {
+      Serial.print("Trouvé à 0x");
+      Serial.println(addr, HEX);
+      bmp280_ok = true;
+      bmp_found = true;
+      
+      bmp.setSampling(
+        Adafruit_BMP280::MODE_NORMAL,
+        Adafruit_BMP280::SAMPLING_X2,
+        Adafruit_BMP280::SAMPLING_X16,
+        Adafruit_BMP280::FILTER_X16,
+        Adafruit_BMP280::STANDBY_MS_500
+      );
+      break;
+    }
+  }
+  
+  if (!bmp_found) {
+    Serial.println("ÉCHEC - BMP280 introuvable");
   }
   
   Serial.println("\nPrêt !");
@@ -188,15 +227,17 @@ void loop() {
 
   // 3. Envoi des données
   unsigned long now = millis();
-  if (now - lastSend >= 2000) {
-    lastSend = now;
-
-    float lux = lightMeter.readLightLevel();
+  if (now - lastSend >= sendInterval) {
+    // Lire les capteurs avec vérifications
+    float lux = bh1750_ok ? lightMeter.readLightLevel() : -1.0;
     int soilRaw = analogRead(SOIL_PIN);
     float soilPercent = map(soilRaw, 4095, 0, 0, 100);
-    float temperature = bmp.readTemperature();
-    float pressurePa = bmp.readPressure();
+    float temperature = bmp280_ok ? bmp.readTemperature() : -999.0;
+    float pressurePa = bmp280_ok ? bmp.readPressure() : 0.0;
     float pressurehPa = pressurePa / 100.0;
+
+    // Debug en série
+    if (lux < 0) Serial.println("[ERROR] BH1750 pas disponible - vérifier connexion I2C");
 
     String payload = "{\"luminosite\":" + String(lux) + 
                      ",\"humidite_sol\":" + String(soilPercent) + 
@@ -209,4 +250,6 @@ void loop() {
 
     if (mqtt.connected()) mqtt.publish(TOPIC_TELEMETRY, payload.c_str());
   }
+  
+  delay(100); // Petit délai pour ne pas surcharger le CPU
 }

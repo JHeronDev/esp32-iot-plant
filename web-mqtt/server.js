@@ -67,6 +67,8 @@ try {
 
 const TOPIC_TELEMETRY = 'tp/esp32/telemetry';
 const TOPIC_CMD = 'tp/esp32/cmd';
+let lastTelemetrySent = 0;
+const MIN_SEND_INTERVAL = 5000; // Envoyer max 1 msg tous les 5s
 
 const app = express();
 const server = http.createServer(app);
@@ -267,36 +269,29 @@ client.on('message', async (topic, message) => {
   if (topic === TOPIC_TELEMETRY) {
     try {
       const data = JSON.parse(message.toString());
+      
+      // Throttle: envoyer max 1 msg tous les 5s
+      const now = Date.now();
+      if (now - lastTelemetrySent < MIN_SEND_INTERVAL) {
+        console.log('[MQTT] Throttled - attente avant envoi');
+        return;
+      }
+      lastTelemetrySent = now;
+
       console.log('[MQTT] Données reçues:', data);
 
       // Ajouter timestamp
       data.timestamp = new Date().toISOString();
+      
+      // Convertir en entiers
+      data.luminosite = Math.round(data.luminosite);
+      data.humidite_sol = Math.round(data.humidite_sol);
+      data.temperature = Math.round(data.temperature);
+      data.pressure = Math.round(data.pressure);
+      data.rssi = Math.round(data.rssi);
 
       // Sauvegarder dans InfluxDB
       saveTelemetryToInflux(data);
-
-      // Vérifier alertes (désactivé)
-      /*
-      if (data.humidite_sol < 30) {
-        await sendAlertEmail(
-          '🚨 Alerte Plante - Humidité Faible',
-          `L'humidité du sol est trop basse: ${data.humidite_sol}%\nAction recommandée: Arroser la plante.`
-        );
-        io.emit('alert', {
-          type: 'low_soil',
-          message: `Humidité du sol: ${data.humidite_sol}%`,
-          timestamp: data.timestamp
-        });
-      }
-
-      if (data.luminosite > 65000) {
-        io.emit('alert', {
-          type: 'high_light',
-          message: `Luminosité très élevée: ${data.luminosite} lux`,
-          timestamp: data.timestamp
-        });
-      }
-      */
 
       // Diffuser aux clients WebSocket
       io.emit('telemetry', data);
