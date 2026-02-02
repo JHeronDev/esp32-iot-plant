@@ -1,11 +1,19 @@
 const net = require('net');
 
+// Railway fournit le PORT dynamique (NE PAS utiliser 1883)
 const PROXY_PORT = process.env.PORT || 8080;
 const MQTT_HOST = '127.0.0.1';
 const MQTT_PORT = 1883;
 
 console.log(`[TCP Proxy] Démarrage sur le port ${PROXY_PORT}`);
 console.log(`[TCP Proxy] Redirige vers ${MQTT_HOST}:${MQTT_PORT}`);
+
+// Vérifier que le port du proxy est différent de Mosquitto
+if (parseInt(PROXY_PORT) === MQTT_PORT) {
+  console.error(`[TCP Proxy] ERREUR: PORT=${PROXY_PORT} ne peut pas être identique au port Mosquitto (${MQTT_PORT})`);
+  console.error(`[TCP Proxy] Vérifie les variables d'environnement Railway - PORT ne doit PAS être 1883`);
+  process.exit(1);
+}
 
 const server = net.createServer((clientSocket) => {
   console.log(`[TCP Proxy] Connexion depuis ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);

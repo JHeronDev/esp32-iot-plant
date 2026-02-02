@@ -1,26 +1,13 @@
-# Image avec Node.js pour le proxy TCP
-FROM node:18-alpine
+# Mosquitto MQTT Broker simple
+FROM eclipse-mosquitto:latest
 
-# Installer Mosquitto
-RUN apk add --no-cache mosquitto mosquitto-clients
-
-# Créer répertoires
-RUN mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log && \
-    chown -R node:node /mosquitto
-
-WORKDIR /app
-
-# Copier fichiers
-COPY tcp-proxy.js ./
-COPY start.sh ./
+# Copier la configuration
 COPY mosquitto/mosquitto.conf /mosquitto/config/mosquitto.conf
 
-# Rendre le script exécutable
-RUN chmod +x start.sh
+# Railway map automatiquement le TCP Proxy vers ce port
+EXPOSE 1883
 
-USER node
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD mosquitto_sub -t "$$SYS/#" -C 1 -i healthcheck -W 3 || exit 1
 
-# Railway utilise $PORT (dynamique)
-EXPOSE 8080
-
-CMD ["./start.sh"]
