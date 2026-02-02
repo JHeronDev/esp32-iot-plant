@@ -46,7 +46,7 @@ bool humidifierOn = false;
 
 unsigned long lastSend = 0;
 unsigned long lastRetry = 0;
-const int retryInterval = 10000;    // Tentative connexion toutes les 10s
+const int retryInterval = 5000;     // Tentative connexion toutes les 5s
 const int sendInterval = 5000;      // Envoyer les données toutes les 5s
 
 
