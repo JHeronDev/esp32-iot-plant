@@ -378,7 +378,7 @@ function renderChart(data) {
           type: 'linear',
           position: 'right',
           min: 0,
-          max: 1500,
+          max: maxScale,
           ticks: { color: '#94a3b8', font: { weight: 'bold' } },
           grid: { color: 'rgba(148,163,184,0.1)' }
         },

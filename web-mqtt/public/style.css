@@ -100,8 +100,9 @@ h2 {
 }
 
 .sensors-buttons {
-  justify-content: center;
-  gap: 2.5rem;
+  justify-content: space-evenly;
+  gap: 0;
+  width: 100%;
 }
 
 .sensor-item {
