@@ -6,7 +6,7 @@ let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
-let maxScale = 1500; // Max de l'échelle Y
+let maxScale = 100000; // Max de l'échelle Y (100k pour lux)
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 
 // === Fonctions de gestion d'authentification ===
@@ -460,7 +460,7 @@ async function saveSettings() {
 // === Gestion du zoom du graphique ===
 function applyZoom() {
   if (!chart) return;
-  chart.options.scales.y.max = maxScale;
+  chart.options.scales.y.max = Math.round(maxScale);
   chart.update('none');
 }
 
