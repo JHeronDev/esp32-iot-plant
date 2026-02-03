@@ -84,8 +84,24 @@ h2 {
 
 #sensors {
   display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sensors-row {
+  display: flex;
   gap: 0.5rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sensors-bubbles {
+  justify-content: space-around;
+}
+
+.sensors-buttons {
+  justify-content: center;
+  gap: 1rem;
 }
 
 .sensor-item {
@@ -93,7 +109,7 @@ h2 {
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -419,4 +435,56 @@ canvas {
 .settings-placeholder p {
   color: #94a3b8;
   margin-bottom: 1rem;
+}
+/* === Contrôles de Zoom du Graphique === */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zoom-btn {
+  padding: 0.5rem 0.75rem;
+  background: rgba(59,130,246,0.1);
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 36px;
+}
+
+.zoom-btn:hover {
+  background: rgba(59,130,246,0.2);
+  transform: scale(1.05);
+}
+
+.zoom-btn:active {
+  transform: scale(0.95);
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(59,130,246,0.05);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+#chart-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+#chart-wrapper:hover {
+  cursor: zoom-in;
+}
+
+#chart-wrapper canvas {
+  touch-action: none;
 }

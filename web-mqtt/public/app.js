@@ -6,6 +6,10 @@ let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
+let zoomLevel = 1; // Facteur de zoom (1 = 100%)
+const MIN_ZOOM = 0.5; // 50% minimum
+const MAX_ZOOM = 3; // 300% maximum
+const ZOOM_STEP = 0.2; // 20% par clic
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -274,6 +278,7 @@ function renderChart(data) {
     chart.data.datasets[3].data = data.map(d => d.temperature || 0);
     chart.data.datasets[4].data = data.map(d => d.pressure || 0);
     chart.update('none');
+    applyZoom();
     return;
   }
   
@@ -367,6 +372,7 @@ function renderChart(data) {
       }
     }
   });
+  applyZoom();
 }
 
 function loadChart() {
@@ -454,6 +460,117 @@ async function saveSettings() {
     alert('❌ Erreur serveur');
   }
 }
+
+// === Gestion du zoom du graphique ===
+function calculateAutoScale() {
+  if (!chart || !chartData || chartData.length === 0) {
+    return { min: 0, max: 1500 };
+  }
+
+  // Collecter toutes les valeurs des datasets visibles
+  const allValues = [];
+  chart.data.datasets.forEach(dataset => {
+    if (dataset.hidden === false || dataset.hidden === undefined) {
+      dataset.data.forEach(val => {
+        if (val !== null && val !== undefined && val !== 0) {
+          allValues.push(val);
+        }
+      });
+    }
+  });
+
+  if (allValues.length === 0) {
+    return { min: 0, max: 1500 };
+  }
+
+  // Trouver min et max réels
+  const minValue = Math.min(...allValues);
+  const maxValue = Math.max(...allValues);
+  const range = maxValue - minValue;
+
+  // Ajouter une marge de 10% de part et d'autre
+  const margin = range * 0.1;
+  let min = Math.max(0, minValue - margin);
+  let max = maxValue + margin;
+
+  // Adapter l'échelle en fonction du zoom
+  // À zoom 0.5 (50%), on affiche plus de données (plage plus grande)
+  // À zoom 1 (100%), c'est l'auto-scale normal
+  // À zoom 3 (300%), on zoome beaucoup (plage plus petite pour plus de détails)
+  const baseRange = 1500;
+  const zoomedRange = baseRange / zoomLevel;
+
+  // Si la plage calculée est plus grande que la plage du zoom, on utilise la plage du zoom
+  if (max - min < zoomedRange) {
+    max = min + zoomedRange;
+  }
+
+  // S'assurer que les valeurs sont arrondies proprement
+  min = Math.floor(min / 50) * 50;
+  max = Math.ceil(max / 50) * 50;
+
+  return { min, max };
+}
+
+function updateZoomDisplay() {
+  const zoomPercentage = Math.round(zoomLevel * 100);
+  const zoomLevelEl = document.getElementById('zoom-level');
+  if (zoomLevelEl) {
+    zoomLevelEl.textContent = zoomPercentage + '%';
+  }
+}
+
+function applyZoom() {
+  if (!chart) return;
+  
+  const scale = calculateAutoScale();
+  chart.options.scales.y.max = scale.max;
+  chart.options.scales.y.min = scale.min;
+  chart.update('none');
+}
+
+function zoomIn() {
+  if (zoomLevel < MAX_ZOOM) {
+    zoomLevel += ZOOM_STEP;
+    if (zoomLevel > MAX_ZOOM) zoomLevel = MAX_ZOOM;
+    updateZoomDisplay();
+    applyZoom();
+  }
+}
+
+function zoomOut() {
+  if (zoomLevel > MIN_ZOOM) {
+    zoomLevel -= ZOOM_STEP;
+    if (zoomLevel < MIN_ZOOM) zoomLevel = MIN_ZOOM;
+    updateZoomDisplay();
+    applyZoom();
+  }
+}
+
+function resetZoom() {
+  zoomLevel = 1;
+  updateZoomDisplay();
+  applyZoom();
+}
+
+// Gestion du zoom à la molette de la souris
+document.addEventListener('DOMContentLoaded', () => {
+  const chartWrapper = document.getElementById('chart-wrapper');
+  if (chartWrapper) {
+    chartWrapper.addEventListener('wheel', (e) => {
+      if (!chart) return;
+      
+      e.preventDefault();
+      
+      // Scrolling vers le haut = zoom in, vers le bas = zoom out
+      if (e.deltaY < 0) {
+        zoomIn();
+      } else {
+        zoomOut();
+      }
+    }, { passive: false });
+  }
+});
 
 // Charger le graphique au démarrage
 loadChart();

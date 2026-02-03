@@ -31,80 +31,98 @@
       <button class="ghost-btn" id="settings-toggle" onclick="toggleSettingsSection()">⚙️ Paramètres</button>
     </div>
     <div id="sensors">
-      <!-- Luminosité -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="lux-bubble">
-            <label>Lumi</label>
-            <div class="value" id="lux">-</div>
-            <div class="unit">lux</div>
+      <!-- Ligne 1 : Bulles des capteurs -->
+      <div class="sensors-row sensors-bubbles">
+        <!-- Luminosité -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="lux-bubble">
+              <label>Lumi</label>
+              <div class="value" id="lux">-</div>
+              <div class="unit">lux</div>
+            </div>
           </div>
         </div>
-        <div class="btn-circle disabled" id="led-btn" onclick="toggle('led', 'LED')">
-          <div class="icon">💡</div>
-          <div class="label">Lumière</div>
+
+        <!-- Humidité Sol -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="soil-bubble">
+              <label>Sol</label>
+              <div class="value" id="soil">-</div>
+              <div class="unit">%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Humidité Air -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="humidity-bubble">
+              <label>Air</label>
+              <div class="value" id="humidity">-</div>
+              <div class="unit">%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Température -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="temp-bubble">
+              <label>Temp</label>
+              <div class="value" id="temp">-</div>
+              <div class="unit">°C</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pression -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="pressure-bubble">
+              <label>Press</label>
+              <div class="value" id="pressure">-</div>
+              <div class="unit">hPa</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal RSSI -->
+        <div class="sensor-item">
+          <div class="indicator">
+            <div class="bubble" id="rssi-bubble">
+              <label>Signal</label>
+              <div class="value" id="rssi">-</div>
+              <div class="unit">dB</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Humidité Sol -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="soil-bubble">
-            <label>Sol</label>
-            <div class="value" id="soil">-</div>
-            <div class="unit">%</div>
+      <!-- Ligne 2 : Boutons d'action -->
+      <div class="sensors-row sensors-buttons">
+        <!-- LED -->
+        <div class="sensor-item">
+          <div class="btn-circle disabled" id="led-btn" onclick="toggle('led', 'LED')">
+            <div class="icon">💡</div>
+            <div class="label">Lumière</div>
           </div>
         </div>
-        <div class="btn-circle disabled" id="hum-btn" onclick="toggle('hum', 'HUM')">
-          <div class="icon">💧</div>
-          <div class="label">Arrosage</div>
-        </div>
-      </div>
 
-      <!-- Humidité Air -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="humidity-bubble">
-            <label>Air</label>
-            <div class="value" id="humidity">-</div>
-            <div class="unit">%</div>
+        <!-- Arrosage -->
+        <div class="sensor-item">
+          <div class="btn-circle disabled" id="hum-btn" onclick="toggle('hum', 'HUM')">
+            <div class="icon">💧</div>
+            <div class="label">Arrosage</div>
           </div>
         </div>
-      </div>
 
-      <!-- Température -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="temp-bubble">
-            <label>Temp</label>
-            <div class="value" id="temp">-</div>
-            <div class="unit">°C</div>
-          </div>
-        </div>
-        <div class="btn-circle disabled" id="fan-btn" onclick="toggle('fan', 'FAN')">
-          <div class="icon">🌀</div>
-          <div class="label">Ventilation</div>
-        </div>
-      </div>
-
-      <!-- Pression (sans bouton) -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="pressure-bubble">
-            <label>Press</label>
-            <div class="value" id="pressure">-</div>
-            <div class="unit">hPa</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Signal RSSI -->
-      <div class="sensor-item">
-        <div class="indicator">
-          <div class="bubble" id="rssi-bubble">
-            <label>Signal</label>
-            <div class="value" id="rssi">-</div>
-            <div class="unit">dB</div>
+        <!-- Ventilation -->
+        <div class="sensor-item">
+          <div class="btn-circle disabled" id="fan-btn" onclick="toggle('fan', 'FAN')">
+            <div class="icon">🌀</div>
+            <div class="label">Ventilation</div>
           </div>
         </div>
       </div>
@@ -113,6 +131,7 @@
 
   <section id="settings-section">
     <h2>⚙️ Paramètres</h2>
+    <h3>Réglage des seuils</h3>
     <div class="settings-content">
       <div class="setting-group">
         <label>🌞 Luminosité (lux)</label>
@@ -155,7 +174,15 @@
   </section>
 
   <section id="chart-section">
-    <h2>📈 Historique</h2>
+    <div class="section-header">
+      <h2>📈 Historique</h2>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-reset" title="Réinitialiser le zoom" onclick="resetZoom()">🔄</button>
+        <button class="zoom-btn" id="zoom-out" title="Dézoomer (-)" onclick="zoomOut()">−</button>
+        <span class="zoom-level" id="zoom-level">100%</span>
+        <button class="zoom-btn" id="zoom-in" title="Zoomer (+)" onclick="zoomIn()">+</button>
+      </div>
+    </div>
     <div id="chart-wrapper">
       <canvas id="chart"></canvas>
     </div>
