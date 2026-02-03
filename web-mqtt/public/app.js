@@ -486,26 +486,25 @@ function calculateAutoScale() {
   const maxValue = Math.max(...allValues);
   const range = maxValue - minValue;
 
-  // Ajouter une marge de 10% de part et d'autre
-  const margin = range * 0.1;
+  // Adapter la marge en fonction du zoom
+  // Moins on zoome, plus grande marge ; plus on zoome, marge réduite
+  let marginPercent = 0.1; // 10% de marge par défaut
+  if (zoomLevel > 2) marginPercent = 0.05;   // 5% quand zoom > 2x
+  if (zoomLevel > 5) marginPercent = 0.02;   // 2% quand zoom > 5x
+  if (zoomLevel > 10) marginPercent = 0.01;  // 1% quand zoom > 10x
+
+  const margin = range * marginPercent;
   let min = Math.max(0, minValue - margin);
   let max = maxValue + margin;
-
-  // Adapter l'échelle en fonction du zoom : divisé par zoomLevel pour zoomer
-  const baseRange = 1500;
-  const zoomedRange = baseRange / zoomLevel;
-
-  // Si la plage calculée est plus petite que la plage du zoom, on utilise la plage du zoom
-  if (max - min < zoomedRange) {
-    max = min + zoomedRange;
-  }
 
   // Adapter la précision de l'arrondi selon le zoom
   // Moins on zoome, plus gros les paliers ; plus on zoome, plus fins les paliers
   let roundFactor = 50;
-  if (zoomedRange < 100) roundFactor = 5;    // Très zoomé : paliers de 5
-  else if (zoomedRange < 500) roundFactor = 10; // Très zoomé : paliers de 10
-  else if (zoomedRange < 1000) roundFactor = 25; // Zoomé : paliers de 25
+  if (zoomLevel > 2) roundFactor = 25;      // Léger zoom
+  if (zoomLevel > 5) roundFactor = 10;      // Zoom moyen
+  if (zoomLevel > 10) roundFactor = 5;      // Zoom élevé
+  if (zoomLevel > 20) roundFactor = 2;      // Très zoomé
+  if (zoomLevel > 50) roundFactor = 1;      // Ultra zoomé : pas d'arrondi
 
   min = Math.floor(min / roundFactor) * roundFactor;
   max = Math.ceil(max / roundFactor) * roundFactor;
