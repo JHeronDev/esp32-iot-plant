@@ -465,12 +465,13 @@ function applyZoom() {
 }
 
 function zoomIn() {
-  maxScale /= ZOOM_MULTIPLIER;
+  maxScale /= ZOOM_MULTIPLIER; 
   applyZoom();
 }
 
 function zoomOut() {
   maxScale *= ZOOM_MULTIPLIER;
+  if (maxScale > 100000) maxScale = 100000; // Limite maximale
   applyZoom();
 }
 
