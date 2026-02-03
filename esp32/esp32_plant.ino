@@ -17,6 +17,7 @@ const char* MQTT_PASS = "";
 #define I2C_SDA 22
 #define I2C_SCL 21
 #define SOIL_PIN 34
+#define WATER_LEVEL_PIN 35
 #define LED_PIN 10
 #define FAN_PIN 14
 #define HUMIDIFIER_PIN 27
@@ -48,6 +49,9 @@ unsigned long lastSend = 0;
 unsigned long lastRetry = 0;
 const int retryInterval = 5000;     // Tentative connexion toutes les 5s
 const int sendInterval = 5000;      // Envoyer les données toutes les 5s
+
+// Capteur de niveau d'eau (plein/vide)
+const bool WATER_LEVEL_ACTIVE_LOW = true; // true si le capteur est actif à LOW
 
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
@@ -142,6 +146,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(FAN_PIN, OUTPUT);
   pinMode(HUMIDIFIER_PIN, OUTPUT);
+  pinMode(WATER_LEVEL_PIN, INPUT_PULLUP);
 
   Serial.print("[WiFi] Connexion à ");
   Serial.print(WIFI_SSID);
@@ -208,6 +213,9 @@ void loop() {
       pressurehPa = pressurePa / 100;
     }
 
+    int waterRaw = digitalRead(WATER_LEVEL_PIN);
+    bool waterFull = WATER_LEVEL_ACTIVE_LOW ? (waterRaw == LOW) : (waterRaw == HIGH);
+
     // Debug en série
     if (lux < 0) Serial.println("[ERROR] BH1750 pas disponible - vérifier connexion I2C");
 
@@ -217,6 +225,7 @@ void loop() {
                      ",\"humidite_air\":" + String(humidity) +
                      ",\"pressure\":" + String(pressurehPa) +
                      ",\"rssi\":" + String(WiFi.RSSI()) + 
+                     ",\"water_full\":" + (waterFull ? "true" : "false") +
                      ",\"led_on\":" + (ledOn ? "true" : "false") +
                      ",\"fan_on\":" + (fanOn ? "true" : "false") +
                      ",\"humidifier_on\":" + (humidifierOn ? "true" : "false") + "}";

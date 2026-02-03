@@ -177,6 +177,24 @@ function update(id, val, min, max) {
   el.textContent = Math.round(val);
 }
 
+function updateWaterLevel(isFull) {
+  const el = document.getElementById('water-level');
+  const bubble = document.getElementById('water-bubble');
+
+  if (!el || !bubble) return;
+
+  bubble.classList.remove('healthy', 'warning', 'critical');
+  if (isFull === true) {
+    el.textContent = 'Plein';
+    bubble.classList.add('healthy');
+  } else if (isFull === false) {
+    el.textContent = 'Vide';
+    bubble.classList.add('critical');
+  } else {
+    el.textContent = '-';
+  }
+}
+
 function toggle(type, cmd) {
   if (!isAuthenticated) {
     setLoginError('');
@@ -217,6 +235,7 @@ socket.on('telemetry', d => {
   update('temp', d.temperature || 0, 15, 30);
   update('pressure', d.pressure || 0, 990, 1030);
   update('rssi', d.rssi || -100, -70, -50);
+  updateWaterLevel(typeof d.water_full === 'boolean' ? d.water_full : null);
   
   // Ajouter le nouveau point au graphique en temps réel
   if (chartData) {
@@ -228,6 +247,7 @@ socket.on('telemetry', d => {
       temperature: d.temperature || 0,
       pressure: d.pressure || 0,
       rssi: d.rssi || 0,
+      water_full: d.water_full || false,
       led_on: d.led_on || false,
       fan_on: d.fan_on || false,
       humidifier_on: d.humidifier_on || false

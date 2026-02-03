@@ -171,6 +171,7 @@ function saveTelemetryToInflux(data) {
       .floatField('temperature', data.temperature || 0)
       .floatField('pressure', data.pressure || 0)
       .intField('rssi', data.rssi)
+      .intField('water_full', data.water_full ? 1 : 0)
       .timestamp(new Date());
 
     writeApi.writePoint(point);
