@@ -500,9 +500,15 @@ function calculateAutoScale() {
     max = min + zoomedRange;
   }
 
-  // S'assurer que les valeurs sont arrondies proprement
-  min = Math.floor(min / 50) * 50;
-  max = Math.ceil(max / 50) * 50;
+  // Adapter la précision de l'arrondi selon le zoom
+  // Moins on zoome, plus gros les paliers ; plus on zoome, plus fins les paliers
+  let roundFactor = 50;
+  if (zoomedRange < 100) roundFactor = 5;    // Très zoomé : paliers de 5
+  else if (zoomedRange < 500) roundFactor = 10; // Très zoomé : paliers de 10
+  else if (zoomedRange < 1000) roundFactor = 25; // Zoomé : paliers de 25
+
+  min = Math.floor(min / roundFactor) * roundFactor;
+  max = Math.ceil(max / roundFactor) * roundFactor;
 
   return { min, max };
 }
