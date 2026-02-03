@@ -6,10 +6,8 @@ let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
-let zoomLevel = 1; // Facteur de zoom (1 = 100%)
-const MIN_ZOOM = 0.5; // 50% minimum
-const MAX_ZOOM = 3; // 300% maximum
-const ZOOM_STEP = 0.2; // 20% par clic
+let zoomLevel = 1; // Facteur de zoom multiplicateur (1 = normal)
+const ZOOM_MULTIPLIER = 1.3; // 30% de zoom par clic
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -493,14 +491,11 @@ function calculateAutoScale() {
   let min = Math.max(0, minValue - margin);
   let max = maxValue + margin;
 
-  // Adapter l'échelle en fonction du zoom
-  // À zoom 0.5 (50%), on affiche plus de données (plage plus grande)
-  // À zoom 1 (100%), c'est l'auto-scale normal
-  // À zoom 3 (300%), on zoome beaucoup (plage plus petite pour plus de détails)
+  // Adapter l'échelle en fonction du zoom : divisé par zoomLevel pour zoomer
   const baseRange = 1500;
   const zoomedRange = baseRange / zoomLevel;
 
-  // Si la plage calculée est plus grande que la plage du zoom, on utilise la plage du zoom
+  // Si la plage calculée est plus petite que la plage du zoom, on utilise la plage du zoom
   if (max - min < zoomedRange) {
     max = min + zoomedRange;
   }
@@ -510,14 +505,6 @@ function calculateAutoScale() {
   max = Math.ceil(max / 50) * 50;
 
   return { min, max };
-}
-
-function updateZoomDisplay() {
-  const zoomPercentage = Math.round(zoomLevel * 100);
-  const zoomLevelEl = document.getElementById('zoom-level');
-  if (zoomLevelEl) {
-    zoomLevelEl.textContent = zoomPercentage + '%';
-  }
 }
 
 function applyZoom() {
@@ -530,26 +517,12 @@ function applyZoom() {
 }
 
 function zoomIn() {
-  if (zoomLevel < MAX_ZOOM) {
-    zoomLevel += ZOOM_STEP;
-    if (zoomLevel > MAX_ZOOM) zoomLevel = MAX_ZOOM;
-    updateZoomDisplay();
-    applyZoom();
-  }
+  zoomLevel *= ZOOM_MULTIPLIER;
+  applyZoom();
 }
 
 function zoomOut() {
-  if (zoomLevel > MIN_ZOOM) {
-    zoomLevel -= ZOOM_STEP;
-    if (zoomLevel < MIN_ZOOM) zoomLevel = MIN_ZOOM;
-    updateZoomDisplay();
-    applyZoom();
-  }
-}
-
-function resetZoom() {
-  zoomLevel = 1;
-  updateZoomDisplay();
+  zoomLevel /= ZOOM_MULTIPLIER;
   applyZoom();
 }
 

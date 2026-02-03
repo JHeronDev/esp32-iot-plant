@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🌱 Serre connectée</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/892/892926.png">
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="style.css">
@@ -177,10 +178,8 @@
     <div class="section-header">
       <h2>📈 Historique</h2>
       <div class="zoom-controls">
-        <button class="zoom-btn" id="zoom-reset" title="Réinitialiser le zoom" onclick="resetZoom()">🔄</button>
-        <button class="zoom-btn" id="zoom-out" title="Dézoomer (-)" onclick="zoomOut()">−</button>
-        <span class="zoom-level" id="zoom-level">100%</span>
-        <button class="zoom-btn" id="zoom-in" title="Zoomer (+)" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" id="zoom-out" title="Dézoomer" onclick="zoomOut()">−</button>
+        <button class="zoom-btn" id="zoom-in" title="Zoomer" onclick="zoomIn()">+</button>
       </div>
     </div>
     <div id="chart-wrapper">

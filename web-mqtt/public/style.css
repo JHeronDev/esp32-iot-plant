@@ -101,7 +101,7 @@ h2 {
 
 .sensors-buttons {
   justify-content: center;
-  gap: 1rem;
+  gap: 2.5rem;
 }
 
 .sensor-item {
@@ -463,17 +463,6 @@ canvas {
 
 .zoom-btn:active {
   transform: scale(0.95);
-}
-
-.zoom-level {
-  min-width: 50px;
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #cbd5e1;
-  background: rgba(59,130,246,0.05);
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
 }
 
 #chart-wrapper {
