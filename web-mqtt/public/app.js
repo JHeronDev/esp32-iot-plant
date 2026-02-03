@@ -6,8 +6,8 @@ let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
-let zoomLevel = 1; // Facteur de zoom multiplicateur (1 = normal)
-const ZOOM_MULTIPLIER = 1.3; // 30% de zoom par clic
+let maxScale = 1500; // Max de l'échelle Y
+const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -276,7 +276,6 @@ function renderChart(data) {
     chart.data.datasets[3].data = data.map(d => d.temperature || 0);
     chart.data.datasets[4].data = data.map(d => d.pressure || 0);
     chart.update('none');
-    applyZoom();
     return;
   }
   
@@ -370,7 +369,6 @@ function renderChart(data) {
       }
     }
   });
-  applyZoom();
 }
 
 function loadChart() {
@@ -460,74 +458,19 @@ async function saveSettings() {
 }
 
 // === Gestion du zoom du graphique ===
-function calculateAutoScale() {
-  if (!chart || !chartData || chartData.length === 0) {
-    return { min: 0, max: 1500 };
-  }
-
-  // Collecter toutes les valeurs des datasets visibles
-  const allValues = [];
-  chart.data.datasets.forEach(dataset => {
-    if (dataset.hidden === false || dataset.hidden === undefined) {
-      dataset.data.forEach(val => {
-        if (val !== null && val !== undefined && val !== 0) {
-          allValues.push(val);
-        }
-      });
-    }
-  });
-
-  if (allValues.length === 0) {
-    return { min: 0, max: 1500 };
-  }
-
-  // Trouver min et max réels
-  const minValue = Math.min(...allValues);
-  const maxValue = Math.max(...allValues);
-  const range = maxValue - minValue;
-
-  // Adapter la marge en fonction du zoom
-  // Moins on zoome, plus grande marge ; plus on zoome, marge réduite
-  let marginPercent = 0.1; // 10% de marge par défaut
-  if (zoomLevel > 2) marginPercent = 0.05;   // 5% quand zoom > 2x
-  if (zoomLevel > 5) marginPercent = 0.02;   // 2% quand zoom > 5x
-  if (zoomLevel > 10) marginPercent = 0.01;  // 1% quand zoom > 10x
-
-  const margin = range * marginPercent;
-  let min = Math.max(0, minValue - margin);
-  let max = maxValue + margin;
-
-  // Adapter la précision de l'arrondi selon le zoom
-  // Moins on zoome, plus gros les paliers ; plus on zoome, plus fins les paliers
-  let roundFactor = 50;
-  if (zoomLevel > 2) roundFactor = 25;      // Léger zoom
-  if (zoomLevel > 5) roundFactor = 10;      // Zoom moyen
-  if (zoomLevel > 10) roundFactor = 5;      // Zoom élevé
-  if (zoomLevel > 20) roundFactor = 2;      // Très zoomé
-  if (zoomLevel > 50) roundFactor = 1;      // Ultra zoomé : pas d'arrondi
-
-  min = Math.floor(min / roundFactor) * roundFactor;
-  max = Math.ceil(max / roundFactor) * roundFactor;
-
-  return { min, max };
-}
-
 function applyZoom() {
   if (!chart) return;
-  
-  const scale = calculateAutoScale();
-  chart.options.scales.y.max = scale.max;
-  chart.options.scales.y.min = scale.min;
+  chart.options.scales.y.max = maxScale;
   chart.update('none');
 }
 
 function zoomIn() {
-  zoomLevel *= ZOOM_MULTIPLIER;
+  maxScale /= ZOOM_MULTIPLIER;
   applyZoom();
 }
 
 function zoomOut() {
-  zoomLevel /= ZOOM_MULTIPLIER;
+  maxScale *= ZOOM_MULTIPLIER;
   applyZoom();
 }
 
