@@ -6,7 +6,8 @@ let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
-let maxScale = 100000; // Max de l'échelle Y (100k pour lux)
+const BASE_SCALE = 1000; // Échelle de base au rechargement
+let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 
 // === Fonctions de gestion d'authentification ===
@@ -392,6 +393,7 @@ function renderChart(data) {
 }
 
 function loadChart() {
+  maxScale = BASE_SCALE; // Réinitialiser à l'échelle de base
   fetch('/api/history?limit=100')
     .then(r => r.json())
     .then(data => {

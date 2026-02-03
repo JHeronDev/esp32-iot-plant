@@ -166,10 +166,14 @@ void setup() {
   mqtt.setCallback(onMessage);
   mqtt.setKeepAlive(60);
   mqtt.setSocketTimeout(15);
-
-  lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire);
-  bh1750_ok = true;
   
+   //Init BH1750
+if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
+  bh1750_ok = true;
+  Serial.println("BH1750 OK.");
+} else {
+  Serial.println("Erreur : BH1750 introuvable. Vérifie le câblage.");
+}
   // Init BME280
   if (bme.begin(0x76) || bme.begin(0x77)) {
     bme280_ok = true;
@@ -198,7 +202,7 @@ void loop() {
     if (bh1750_ok) {
       float luxFloat = lightMeter.readLightLevel();
       lux = (int)luxFloat;
-    }
+      }
     
     int soilRaw = analogRead(SOIL_PIN);
     int soilPercent = map(soilRaw, 4095, 0, 0, 100);
