@@ -254,7 +254,8 @@ canvas {
 }
 
 .login-inputs input {
-  flex: 1 1 100px;
+  flex: 1 1 auto;
+  min-width: 100px;
   padding: 0.5rem;
   background: #0f172a;
   border: 1px solid rgba(255,255,255,0.1);
@@ -508,14 +509,18 @@ canvas {
 
 @media (max-width: 620px) {
   .login-inputs input {
-    padding: 0.35rem 0.5rem;
     font-size: 0.7rem;
+    height: 2em;
+    line-height: 2em;
+    padding: 0 0.5rem;
   }
 
   .login-btn,
   .logout-btn {
-    padding: 0.4rem 0.75rem;
     font-size: 0.7rem;
+    height: 2em;
+    line-height: 2em;
+    padding: 0 0.75rem;
   }
 }
 
