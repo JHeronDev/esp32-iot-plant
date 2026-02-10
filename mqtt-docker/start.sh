@@ -1,4 +1,5 @@
 #!/bin/sh
+# Script de démarrage: lance Mosquitto puis le proxy TCP
 set -e
 
 echo "[Start] Démarrage de Mosquitto..."

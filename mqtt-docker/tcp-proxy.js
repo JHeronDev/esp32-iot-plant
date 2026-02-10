@@ -1,3 +1,4 @@
+// Proxy TCP simple: expose un port public Railway et redirige vers Mosquitto (1883)
 const net = require('net');
 
 // Railway fournit le PORT dynamique (NE PAS utiliser 1883)

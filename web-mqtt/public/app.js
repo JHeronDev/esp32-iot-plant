@@ -1,3 +1,5 @@
+// === Front-end: auth, capteurs, graphiques, settings ===
+// Ce fichier gère l'UI, les mises à jour en temps réel via WebSocket et le graphique.
 // WebSocket et variables globales
 const socket = io({ reconnection: true, reconnectionDelay: 1000 });
 let chart = null;
@@ -480,6 +482,7 @@ async function saveSettings() {
 }
 
 // === Gestion du zoom du graphique ===
+// On ajuste uniquement le max de l'axe Y pour zoomer/dézoomer facilement.
 function applyZoom() {
   if (!chart) return;
   chart.options.scales.y.max = Math.round(maxScale);

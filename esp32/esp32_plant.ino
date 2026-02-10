@@ -1,3 +1,5 @@
+// === Dépendances principales ===
+// WiFi/MQTT pour la connectivité, I2C pour les capteurs, BH1750/BME280 pour la lumière et le climat.
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <Wire.h>
@@ -14,15 +16,16 @@ const char* MQTT_USER = "";  // Laisser vide (allow_anonymous true)
 const char* MQTT_PASS = "";
 // ==========================================================
 
-#define I2C_SDA 22
-#define I2C_SCL 21
-#define SOIL_PIN 34
-#define WATER_LEVEL_PIN 35
-#define LED_PIN 10
-#define FAN_PIN 14
-#define HUMIDIFIER_PIN 27
-#define CTP_SDA 2
-#define CTP_SCL 15
+// === Brochage matériel ===
+#define I2C_SDA 22          // SDA du bus I2C
+#define I2C_SCL 21          // SCL du bus I2C
+#define SOIL_PIN 34         // Entrée analogique capteur d'humidité du sol
+#define WATER_LEVEL_PIN 35  // Entrée digitale capteur niveau d'eau (plein/vide)
+#define LED_PIN 10          // Sortie LED
+#define FAN_PIN 14          // Sortie ventilateur
+#define HUMIDIFIER_PIN 27   // Sortie humidificateur
+#define CTP_SDA 2           // (Réservé) SDA écran tactile/CTP
+#define CTP_SCL 15          // (Réservé) SCL écran tactile/CTP
 
 const char* WIFI_SSID = "CFAINSTA_STUDENTS";
 const char* WIFI_PASS = "Cf@InSt@-$tUd3nT";
@@ -54,6 +57,7 @@ const int sendInterval = 5000;      // Envoyer les données toutes les 5s
 const bool WATER_LEVEL_ACTIVE_LOW = true; // true si le capteur est actif à LOW
 
 
+// === Réception des commandes MQTT ===
 void onMessage(char* topic, byte* payload, unsigned int length) {
   String msg = "";
   for (unsigned int i = 0; i < length; i++) msg += (char)payload[i];
@@ -87,6 +91,7 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+// === Connexion MQTT avec logique de retry ===
 void tryConnectMQTT() {
   if (!mqtt.connected() && millis() - lastRetry > retryInterval) {
     lastRetry = millis();
@@ -137,6 +142,7 @@ void tryConnectMQTT() {
   }
 }
 
+// === Initialisation matérielle et réseau ===
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -185,6 +191,8 @@ if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
   Serial.println("\nPrêt !");
 }
 
+// === Boucle principale ===
+// 1) traite les messages MQTT, 2) assure la reconnexion, 3) publie la télémétrie
 void loop() {
   // 1. Priorité au traitement des messages (Actions rapides)
   mqtt.loop();

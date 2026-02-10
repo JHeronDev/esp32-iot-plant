@@ -1,3 +1,5 @@
+// === Backend Node.js ===
+// Ce serveur fait le pont entre MQTT (ESP32), WebSocket (UI) et la persistance (InfluxDB/PostgreSQL).
 const mqtt = require('mqtt');
 const express = require('express');
 const http = require('http');

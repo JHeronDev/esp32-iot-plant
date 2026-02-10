@@ -1,5 +1,7 @@
+/* === Base et reset === */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* === Layout global === */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #0f172a;
@@ -10,6 +12,7 @@ body {
   overflow: hidden;
 }
 
+/* === En-tête === */
 header {
   background: #1e293b;
   padding: 1rem;
