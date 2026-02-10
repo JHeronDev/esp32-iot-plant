@@ -308,6 +308,7 @@ canvas {
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
+  flex-wrap: nowrap;
 }
 
 .user-chip {
@@ -320,6 +321,7 @@ canvas {
   border-radius: 0;
   font-weight: 700;
   color: #e2e8f0;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -535,8 +537,12 @@ canvas {
     align-items: stretch;
   }
 
-  .login-btn,
-  .logout-btn {
+  .login-btn {
     width: 100%;
+  }
+
+  .logout-btn {
+    width: auto;
+    flex: 0 0 auto;
   }
 }
