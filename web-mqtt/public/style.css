@@ -231,11 +231,20 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  align-items: flex-end;
   padding: 0;
   background: transparent;
   border: none;
   border-radius: 0;
   font-size: 0.875rem;
+}
+
+.login-fields {
+  width: 100%;
+}
+
+.login-fields.is-collapsed {
+  display: none;
 }
 
 .login-inputs {
@@ -492,6 +501,7 @@ canvas {
 
   #login-panel {
     width: 100%;
+    align-items: stretch;
   }
 }
 

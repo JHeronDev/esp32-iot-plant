@@ -16,11 +16,13 @@
   <h1>🌱 Serre connectée</h1>
   <div id="status">Déconnecté</div>
   <div id="login-panel">
-    <div class="login-inputs">
-      <input type="text" id="username" placeholder="Utilisateur">
-      <input type="password" id="password" placeholder="Mot de passe">
-      <button class="login-btn" onclick="handleLogin()">Connexion</button>
+    <div class="login-fields is-collapsed" id="login-fields">
+      <div class="login-inputs">
+        <input type="text" id="username" placeholder="Utilisateur">
+        <input type="password" id="password" placeholder="Mot de passe">
+      </div>
     </div>
+    <button class="login-btn" id="login-toggle-btn" onclick="handleLoginToggle()">Connexion</button>
     <div id="login-error"></div>
     <div id="auth-status"></div>
   </div>

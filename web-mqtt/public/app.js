@@ -11,6 +11,7 @@ let chartData = null;
 const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
+const LOGIN_COLLAPSED_CLASS = 'is-collapsed';
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -47,8 +48,12 @@ function disableButtons() {
 function showAuthInfo() {
   const loginInputs = document.querySelector('.login-inputs');
   const authStatus = document.getElementById('auth-status');
+  const loginFields = document.getElementById('login-fields');
+  const loginToggle = document.getElementById('login-toggle-btn');
   
   if (loginInputs) loginInputs.style.display = 'none';
+  if (loginFields) loginFields.classList.add(LOGIN_COLLAPSED_CLASS);
+  if (loginToggle) loginToggle.style.display = 'none';
   if (authStatus) {
     authStatus.style.display = 'flex';
     authStatus.innerHTML = `
@@ -67,9 +72,16 @@ function logout() {
   
   const loginInputs = document.querySelector('.login-inputs');
   const authStatus = document.getElementById('auth-status');
+  const loginFields = document.getElementById('login-fields');
+  const loginToggle = document.getElementById('login-toggle-btn');
   
   if (loginInputs) loginInputs.style.display = 'flex';
   if (authStatus) authStatus.style.display = 'none';
+  if (loginFields) loginFields.classList.add(LOGIN_COLLAPSED_CLASS);
+  if (loginToggle) {
+    loginToggle.style.display = 'inline-flex';
+    loginToggle.textContent = 'Connexion';
+  }
   document.getElementById('login-error').textContent = '';
   
   disableButtons();
@@ -84,6 +96,23 @@ if (token) {
 } else {
   console.log('[DEBUG] Pas de token');
   disableButtons();
+}
+
+function handleLoginToggle() {
+  if (isAuthenticated) return;
+
+  const loginFields = document.getElementById('login-fields');
+  const loginToggle = document.getElementById('login-toggle-btn');
+  const usernameInput = document.getElementById('username');
+
+  if (loginFields && loginFields.classList.contains(LOGIN_COLLAPSED_CLASS)) {
+    loginFields.classList.remove(LOGIN_COLLAPSED_CLASS);
+    if (loginToggle) loginToggle.textContent = 'Se connecter';
+    if (usernameInput) usernameInput.focus();
+    return;
+  }
+
+  handleLogin();
 }
 
 async function handleLogin() {
