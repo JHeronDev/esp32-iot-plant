@@ -305,8 +305,9 @@ canvas {
 #auth-status {
   display: none;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .user-chip {
@@ -319,6 +320,10 @@ canvas {
   border-radius: 0;
   font-weight: 700;
   color: #e2e8f0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-circle:disabled {
