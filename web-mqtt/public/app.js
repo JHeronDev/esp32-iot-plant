@@ -368,6 +368,10 @@ function collectSettingsFromUi() {
         min: parseThresholdInput('lux-min', settingsCache.thresholds.lux.min),
         max: parseThresholdInput('lux-max', settingsCache.thresholds.lux.max)
       },
+      soil: {
+        min: parseThresholdInput('soil-min', settingsCache.thresholds.soil.min),
+        max: parseThresholdInput('soil-max', settingsCache.thresholds.soil.max)
+      },
       air: {
         min: parseThresholdInput('air-min', settingsCache.thresholds.air.min),
         max: parseThresholdInput('air-max', settingsCache.thresholds.air.max)
@@ -376,13 +380,9 @@ function collectSettingsFromUi() {
         min: parseThresholdInput('temp-min', settingsCache.thresholds.temp.min),
         max: parseThresholdInput('temp-max', settingsCache.thresholds.temp.max)
       },
-      pressure: {
-        min: parseThresholdInput('pressure-min', settingsCache.thresholds.pressure.min),
-        max: parseThresholdInput('pressure-max', settingsCache.thresholds.pressure.max)
-      },
       rssi: {
-        min: settingsCache.thresholds.rssi.min,
-        max: settingsCache.thresholds.rssi.max
+        min: parseThresholdInput('rssi-min', settingsCache.thresholds.rssi.min),
+        max: parseThresholdInput('rssi-max', settingsCache.thresholds.rssi.max)
       }
     },
     indicators: { ...settingsCache.indicators },
@@ -673,8 +673,15 @@ async function saveSettings(showAlert = true) {
         alert('✅ Paramètres sauvegardés avec succès!');
       }
     } else {
+      let errorMessage = 'Erreur lors de la sauvegarde';
+      try {
+        const errorPayload = await response.json();
+        if (errorPayload?.error) errorMessage = errorPayload.error;
+      } catch (_) {
+        // garder le message par défaut
+      }
       if (showAlert) {
-        alert('❌ Erreur lors de la sauvegarde');
+        alert(`❌ ${errorMessage}`);
       }
     }
   } catch (err) {
