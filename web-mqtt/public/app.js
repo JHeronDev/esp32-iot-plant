@@ -4,10 +4,43 @@
 const socket = io({ reconnection: true, reconnectionDelay: 1000 });
 let chart = null;
 let states = { led: false, hum: false, fan: false };
+let automationStates = { led: false, hum: false, fan: false };
 let token = localStorage.getItem('auth_token');
 let currentUsername = localStorage.getItem('username');
 let isAuthenticated = false;
 let chartData = null;
+let latestTelemetry = null;
+const defaultSettings = {
+  thresholds: {
+    lux: { min: 500, max: 10000 },
+    soil: { min: 30, max: 70 },
+    air: { min: 30, max: 70 },
+    temp: { min: 15, max: 30 },
+    pressure: { min: 990, max: 1030 },
+    rssi: { min: -70, max: -50 }
+  },
+  indicators: {
+    lux: true,
+    soil: true,
+    temp: true,
+    pressure: true,
+    rssi: true
+  },
+  automations: {
+    led: false,
+    hum: false,
+    fan: false
+  },
+  water: {
+    mustBeFull: true
+  }
+};
+let settingsCache = JSON.parse(JSON.stringify(defaultSettings));
+const deviceConfig = {
+  led: { btnId: 'led-btn', autoId: 'led-auto', cmd: 'LED' },
+  hum: { btnId: 'hum-btn', autoId: 'hum-auto', cmd: 'HUM' },
+  fan: { btnId: 'fan-btn', autoId: 'fan-auto', cmd: 'FAN' }
+};
 const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
@@ -30,9 +63,15 @@ function enableButtons() {
   const ledBtn = document.getElementById('led-btn');
   const humBtn = document.getElementById('hum-btn');
   const fanBtn = document.getElementById('fan-btn');
+  const ledAuto = document.getElementById('led-auto');
+  const humAuto = document.getElementById('hum-auto');
+  const fanAuto = document.getElementById('fan-auto');
   if (ledBtn) ledBtn.classList.remove('disabled');
   if (humBtn) humBtn.classList.remove('disabled');
   if (fanBtn) fanBtn.classList.remove('disabled');
+  if (ledAuto) ledAuto.disabled = false;
+  if (humAuto) humAuto.disabled = false;
+  if (fanAuto) fanAuto.disabled = false;
 }
 
 function disableButtons() {
@@ -40,9 +79,15 @@ function disableButtons() {
   const ledBtn = document.getElementById('led-btn');
   const humBtn = document.getElementById('hum-btn');
   const fanBtn = document.getElementById('fan-btn');
+  const ledAuto = document.getElementById('led-auto');
+  const humAuto = document.getElementById('hum-auto');
+  const fanAuto = document.getElementById('fan-auto');
   if (ledBtn) ledBtn.classList.add('disabled');
   if (humBtn) humBtn.classList.add('disabled');
   if (fanBtn) fanBtn.classList.add('disabled');
+  if (ledAuto) ledAuto.disabled = true;
+  if (humAuto) humAuto.disabled = true;
+  if (fanAuto) fanAuto.disabled = true;
 }
 
 function showAuthInfo() {
@@ -93,6 +138,7 @@ if (token) {
   isAuthenticated = true;
   showAuthInfo();
   enableButtons();
+  loadSettings();
 } else {
   console.log('[DEBUG] Pas de token');
   disableButtons();
@@ -178,6 +224,7 @@ socket.on('auth_success', (data) => {
   enableButtons();
   isAuthenticated = true;
   console.log('Authentifié:', data.username);
+  loadSettings();
 });
 
 socket.on('auth_error', (data) => {
@@ -209,7 +256,7 @@ function update(id, val, min, max) {
   el.textContent = Math.round(val);
 }
 
-function updateWaterLevel(isFull) {
+function updateWaterLevel(isFull, mustBeFull = true) {
   const el = document.getElementById('water-level');
   const bubble = document.getElementById('water-bubble');
 
@@ -218,13 +265,187 @@ function updateWaterLevel(isFull) {
   bubble.classList.remove('healthy', 'warning', 'critical');
   if (isFull === true) {
     el.textContent = 'Plein';
-    bubble.classList.add('healthy');
+    bubble.classList.add(mustBeFull ? 'healthy' : 'critical');
   } else if (isFull === false) {
     el.textContent = 'Vide';
-    bubble.classList.add('critical');
+    bubble.classList.add(mustBeFull ? 'critical' : 'healthy');
   } else {
     el.textContent = '-';
   }
+}
+
+function mergeLocalSettings(incoming = {}) {
+  const merged = JSON.parse(JSON.stringify(defaultSettings));
+  const incomingThresholds = incoming.thresholds || {};
+  for (const key of Object.keys(merged.thresholds)) {
+    const threshold = incomingThresholds[key] || {};
+    const minCandidate = Number(threshold.min);
+    const maxCandidate = Number(threshold.max);
+    if (Number.isFinite(minCandidate)) merged.thresholds[key].min = minCandidate;
+    if (Number.isFinite(maxCandidate)) merged.thresholds[key].max = maxCandidate;
+  }
+
+  const incomingIndicators = incoming.indicators || {};
+  for (const key of Object.keys(merged.indicators)) {
+    if (typeof incomingIndicators[key] === 'boolean') merged.indicators[key] = incomingIndicators[key];
+  }
+
+  const incomingAutomations = incoming.automations || {};
+  for (const key of Object.keys(merged.automations)) {
+    if (typeof incomingAutomations[key] === 'boolean') merged.automations[key] = incomingAutomations[key];
+  }
+
+  const incomingWater = incoming.water || {};
+  if (typeof incomingWater.mustBeFull === 'boolean') {
+    merged.water.mustBeFull = incomingWater.mustBeFull;
+  }
+
+  return merged;
+}
+
+function setDeviceButtonState(type, isOn) {
+  states[type] = Boolean(isOn);
+  const button = document.getElementById(deviceConfig[type]?.btnId);
+  if (!button) return;
+  if (states[type]) button.classList.add('on');
+  else button.classList.remove('on');
+}
+
+function setAutomationVisualState(type, enabled) {
+  automationStates[type] = Boolean(enabled);
+  const autoInput = document.getElementById(deviceConfig[type]?.autoId);
+  const button = document.getElementById(deviceConfig[type]?.btnId);
+  if (autoInput) autoInput.checked = automationStates[type];
+  if (button) {
+    if (automationStates[type]) button.classList.add('auto-active');
+    else button.classList.remove('auto-active');
+  }
+}
+
+function sendDeviceCommand(type, shouldBeOn) {
+  const cmd = deviceConfig[type]?.cmd;
+  if (!cmd) return;
+  socket.emit('cmd', shouldBeOn ? `${cmd}_ON` : `${cmd}_OFF`);
+}
+
+function applyAutomationForDevice(type, telemetry) {
+  const thresholds = settingsCache.thresholds;
+  let desiredState = null;
+
+  if (type === 'led') {
+    const lux = Number(telemetry.luminosite);
+    if (!Number.isFinite(lux)) return;
+    if (lux <= thresholds.lux.min) desiredState = true;
+    else if (lux >= thresholds.lux.max) desiredState = false;
+  }
+
+  if (type === 'hum') {
+    const soil = Number(telemetry.humidite_sol);
+    if (!Number.isFinite(soil)) return;
+    if (soil <= thresholds.soil.min) desiredState = true;
+    else if (soil >= thresholds.soil.max) desiredState = false;
+  }
+
+  if (type === 'fan') {
+    const temp = Number(telemetry.temperature);
+    if (!Number.isFinite(temp)) return;
+    if (temp >= thresholds.temp.max) desiredState = true;
+    else if (temp <= thresholds.temp.min) desiredState = false;
+  }
+
+  if (desiredState === null || states[type] === desiredState) return;
+  setDeviceButtonState(type, desiredState);
+  sendDeviceCommand(type, desiredState);
+}
+
+function runAutomations(telemetry) {
+  if (!isAuthenticated || !telemetry) return;
+  if (automationStates.led) applyAutomationForDevice('led', telemetry);
+  if (automationStates.hum) applyAutomationForDevice('hum', telemetry);
+  if (automationStates.fan) applyAutomationForDevice('fan', telemetry);
+}
+
+function parseThresholdInput(elementId, fallbackValue) {
+  const parsed = Number(document.getElementById(elementId)?.value);
+  return Number.isFinite(parsed) ? parsed : fallbackValue;
+}
+
+function collectSettingsFromUi() {
+  return {
+    thresholds: {
+      lux: {
+        min: parseThresholdInput('lux-min', settingsCache.thresholds.lux.min),
+        max: parseThresholdInput('lux-max', settingsCache.thresholds.lux.max)
+      },
+      soil: {
+        min: parseThresholdInput('soil-min', settingsCache.thresholds.soil.min),
+        max: parseThresholdInput('soil-max', settingsCache.thresholds.soil.max)
+      },
+      air: {
+        min: parseThresholdInput('air-min', settingsCache.thresholds.air.min),
+        max: parseThresholdInput('air-max', settingsCache.thresholds.air.max)
+      },
+      temp: {
+        min: parseThresholdInput('temp-min', settingsCache.thresholds.temp.min),
+        max: parseThresholdInput('temp-max', settingsCache.thresholds.temp.max)
+      },
+      pressure: {
+        min: parseThresholdInput('pressure-min', settingsCache.thresholds.pressure.min),
+        max: parseThresholdInput('pressure-max', settingsCache.thresholds.pressure.max)
+      },
+      rssi: {
+        min: settingsCache.thresholds.rssi.min,
+        max: settingsCache.thresholds.rssi.max
+      }
+    },
+    indicators: { ...settingsCache.indicators },
+    automations: {
+      led: automationStates.led,
+      hum: automationStates.hum,
+      fan: automationStates.fan
+    },
+    water: {
+      mustBeFull: document.getElementById('water-must-be-full')?.value === 'true'
+    }
+  };
+}
+
+function applySettingsToUi() {
+  document.getElementById('lux-min').value = settingsCache.thresholds.lux.min;
+  document.getElementById('lux-max').value = settingsCache.thresholds.lux.max;
+  document.getElementById('soil-min').value = settingsCache.thresholds.soil.min;
+  document.getElementById('soil-max').value = settingsCache.thresholds.soil.max;
+  document.getElementById('air-min').value = settingsCache.thresholds.air.min;
+  document.getElementById('air-max').value = settingsCache.thresholds.air.max;
+  document.getElementById('temp-min').value = settingsCache.thresholds.temp.min;
+  document.getElementById('temp-max').value = settingsCache.thresholds.temp.max;
+  document.getElementById('pressure-min').value = settingsCache.thresholds.pressure.min;
+  document.getElementById('pressure-max').value = settingsCache.thresholds.pressure.max;
+  document.getElementById('rssi-min').value = settingsCache.thresholds.rssi.min;
+  document.getElementById('rssi-max').value = settingsCache.thresholds.rssi.max;
+  document.getElementById('water-must-be-full').value = String(settingsCache.water.mustBeFull);
+
+  setAutomationVisualState('led', settingsCache.automations.led);
+  setAutomationVisualState('hum', settingsCache.automations.hum);
+  setAutomationVisualState('fan', settingsCache.automations.fan);
+}
+
+async function handleAutomationToggle(type, enabled) {
+  if (!isAuthenticated) {
+    const autoInput = document.getElementById(deviceConfig[type]?.autoId);
+    if (autoInput) autoInput.checked = automationStates[type];
+    setLoginError('Veuillez vous connecter pour activer l\'automatisation');
+    return;
+  }
+
+  setAutomationVisualState(type, enabled);
+  settingsCache.automations[type] = automationStates[type];
+
+  if (enabled && latestTelemetry) {
+    applyAutomationForDevice(type, latestTelemetry);
+  }
+
+  await saveSettings(false);
 }
 
 function toggle(type, cmd) {
@@ -232,14 +453,13 @@ function toggle(type, cmd) {
     setLoginError('');
     return;
   }
-  states[type] = !states[type];
-  const btn = document.getElementById(type + '-btn');
-  if (states[type]) {
-    btn.classList.add('on');
-  } else {
-    btn.classList.remove('on');
+  if (automationStates[type]) {
+    alert('Désactivez le mode Auto avant de contrôler manuellement cet équipement.');
+    return;
   }
-  socket.emit('cmd', states[type] ? cmd + '_ON' : cmd + '_OFF');
+  const nextState = !states[type];
+  setDeviceButtonState(type, nextState);
+  socket.emit('cmd', nextState ? cmd + '_ON' : cmd + '_OFF');
 }
 
 function toggleSettingsSection() {
@@ -259,15 +479,17 @@ function toggleSettingsSection() {
 
 socket.on('telemetry', d => {
   if (!d) return;
+  latestTelemetry = d;
+  const thresholds = settingsCache.thresholds;
   
   // Mise à jour des capteurs
-  update('lux', d.luminosite || 0, 500, 10000);
-  update('soil', d.humidite_sol || 0, 30, 70);
-  update('humidity', d.humidite_air || 0, 30, 70);
-  update('temp', d.temperature || 0, 15, 30);
-  update('pressure', d.pressure || 0, 990, 1030);
-  update('rssi', d.rssi || -100, -70, -50);
-  updateWaterLevel(typeof d.water_full === 'boolean' ? d.water_full : null);
+  update('lux', d.luminosite || 0, thresholds.lux.min, thresholds.lux.max);
+  update('soil', d.humidite_sol || 0, thresholds.soil.min, thresholds.soil.max);
+  update('humidity', d.humidite_air || 0, thresholds.air.min, thresholds.air.max);
+  update('temp', d.temperature || 0, thresholds.temp.min, thresholds.temp.max);
+  update('pressure', d.pressure || 0, thresholds.pressure.min, thresholds.pressure.max);
+  update('rssi', d.rssi || -100, thresholds.rssi.min, thresholds.rssi.max);
+  updateWaterLevel(typeof d.water_full === 'boolean' ? d.water_full : null, settingsCache.water.mustBeFull);
   
   // Ajouter le nouveau point au graphique en temps réel
   if (chartData) {
@@ -291,23 +513,16 @@ socket.on('telemetry', d => {
   
   // Synchroniser les états des boutons
   if (d.led_on !== undefined) {
-    states.led = d.led_on;
-    const ledBtn = document.getElementById('led-btn');
-    if (d.led_on) ledBtn.classList.add('on');
-    else ledBtn.classList.remove('on');
+    setDeviceButtonState('led', d.led_on);
   }
   if (d.fan_on !== undefined) {
-    states.fan = d.fan_on;
-    const fanBtn = document.getElementById('fan-btn');
-    if (d.fan_on) fanBtn.classList.add('on');
-    else fanBtn.classList.remove('on');
+    setDeviceButtonState('fan', d.fan_on);
   }
   if (d.humidifier_on !== undefined) {
-    states.hum = d.humidifier_on;
-    const humBtn = document.getElementById('hum-btn');
-    if (d.humidifier_on) humBtn.classList.add('on');
-    else humBtn.classList.remove('on');
+    setDeviceButtonState('hum', d.humidifier_on);
   }
+
+  runAutomations(d);
 });
 
 // === Gestion du graphique ===
@@ -443,15 +658,9 @@ async function loadSettings() {
     
     if (response.ok) {
       const data = await response.json();
-      // Remplir les champs d'entrée avec les seuils
-      document.getElementById('lux-min').value = data.thresholds.lux.min;
-      document.getElementById('lux-max').value = data.thresholds.lux.max;
-      document.getElementById('soil-min').value = data.thresholds.soil.min;
-      document.getElementById('soil-max').value = data.thresholds.soil.max;
-      document.getElementById('temp-min').value = data.thresholds.temp.min;
-      document.getElementById('temp-max').value = data.thresholds.temp.max;
-      document.getElementById('pressure-min').value = data.thresholds.pressure.min;
-      document.getElementById('pressure-max').value = data.thresholds.pressure.max;
+      settingsCache = mergeLocalSettings(data);
+      applySettingsToUi();
+      runAutomations(latestTelemetry);
     } else {
       console.error('Erreur chargement paramètres');
     }
@@ -460,35 +669,10 @@ async function loadSettings() {
   }
 }
 
-async function saveSettings() {
+async function saveSettings(showAlert = true) {
   try {
-    const settings = {
-      thresholds: {
-        lux: {
-          min: parseInt(document.getElementById('lux-min').value),
-          max: parseInt(document.getElementById('lux-max').value)
-        },
-        soil: {
-          min: parseInt(document.getElementById('soil-min').value),
-          max: parseInt(document.getElementById('soil-max').value)
-        },
-        temp: {
-          min: parseFloat(document.getElementById('temp-min').value),
-          max: parseFloat(document.getElementById('temp-max').value)
-        },
-        pressure: {
-          min: parseInt(document.getElementById('pressure-min').value),
-          max: parseInt(document.getElementById('pressure-max').value)
-        }
-      },
-      indicators: {
-        lux: true,
-        soil: true,
-        temp: true,
-        pressure: true,
-        rssi: true
-      }
-    };
+    const settings = collectSettingsFromUi();
+    settingsCache = mergeLocalSettings(settings);
 
     const response = await fetch('/api/settings', {
       method: 'POST',
@@ -496,17 +680,27 @@ async function saveSettings() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(settings)
+      body: JSON.stringify(settingsCache)
     });
 
     if (response.ok) {
-      alert('✅ Paramètres sauvegardés avec succès!');
+      const payload = await response.json();
+      settingsCache = mergeLocalSettings(payload.settings || settingsCache);
+      applySettingsToUi();
+      runAutomations(latestTelemetry);
+      if (showAlert) {
+        alert('✅ Paramètres sauvegardés avec succès!');
+      }
     } else {
-      alert('❌ Erreur lors de la sauvegarde');
+      if (showAlert) {
+        alert('❌ Erreur lors de la sauvegarde');
+      }
     }
   } catch (err) {
     console.error('Erreur:', err);
-    alert('❌ Erreur serveur');
+    if (showAlert) {
+      alert('❌ Erreur serveur');
+    }
   }
 }
 

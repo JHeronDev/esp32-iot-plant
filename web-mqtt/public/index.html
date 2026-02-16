@@ -124,6 +124,10 @@
             <div class="icon">💡</div>
             <div class="label">Lumière</div>
           </div>
+          <label class="auto-toggle" for="led-auto">
+            <span>Auto</span>
+            <input type="checkbox" id="led-auto" onchange="handleAutomationToggle('led', this.checked)">
+          </label>
         </div>
 
         <!-- Arrosage -->
@@ -132,6 +136,10 @@
             <div class="icon">💧</div>
             <div class="label">Arrosage</div>
           </div>
+          <label class="auto-toggle" for="hum-auto">
+            <span>Auto</span>
+            <input type="checkbox" id="hum-auto" onchange="handleAutomationToggle('hum', this.checked)">
+          </label>
         </div>
 
         <!-- Ventilation -->
@@ -140,6 +148,10 @@
             <div class="icon">🌀</div>
             <div class="label">Ventilation</div>
           </div>
+          <label class="auto-toggle" for="fan-auto">
+            <span>Auto</span>
+            <input type="checkbox" id="fan-auto" onchange="handleAutomationToggle('fan', this.checked)">
+          </label>
         </div>
       </div>
     </div>
@@ -177,11 +189,39 @@
       </div>
 
       <div class="setting-group">
+        <label>💨 Humidité de l'air (%)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="air-min" placeholder="Min" min="0" max="100">
+          <span class="range-sep">-</span>
+          <input type="number" id="air-max" placeholder="Max" min="0" max="100">
+        </div>
+      </div>
+
+      <div class="setting-group">
         <label>🎯 Pression (hPa)</label>
         <div class="threshold-inputs">
           <input type="number" id="pressure-min" placeholder="Min">
           <span class="range-sep">-</span>
           <input type="number" id="pressure-max" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>📶 Signal RSSI (dB)</label>
+        <div class="threshold-inputs">
+          <input type="number" id="rssi-min" placeholder="Min">
+          <span class="range-sep">-</span>
+          <input type="number" id="rssi-max" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>🚰 Niveau d'eau attendu</label>
+        <div class="threshold-inputs">
+          <select id="water-must-be-full">
+            <option value="true">Réservoir plein</option>
+            <option value="false">Réservoir vide</option>
+          </select>
         </div>
       </div>
 

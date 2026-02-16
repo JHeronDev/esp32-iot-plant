@@ -192,6 +192,7 @@ const defaultSettings = {
   thresholds: {
     lux: { min: 500, max: 10000 },
     soil: { min: 30, max: 70 },
+    air: { min: 30, max: 70 },
     temp: { min: 15, max: 30 },
     pressure: { min: 990, max: 1030 },
     rssi: { min: -70, max: -50 }
@@ -202,13 +203,21 @@ const defaultSettings = {
     temp: true,
     pressure: true,
     rssi: true
+  },
+  automations: {
+    led: false,
+    hum: false,
+    fan: false
+  },
+  water: {
+    mustBeFull: true
   }
 };
 
 let currentSettings = { ...defaultSettings };
 
 function mergeSettings(defaults, incoming = {}) {
-  const merged = { thresholds: {}, indicators: {} };
+  const merged = { thresholds: {}, indicators: {}, automations: {}, water: {} };
 
   for (const key of Object.keys(defaults.thresholds)) {
     const candidate = incoming.thresholds?.[key] || {};
@@ -223,6 +232,15 @@ function mergeSettings(defaults, incoming = {}) {
     const val = incoming.indicators?.[key];
     merged.indicators[key] = typeof val === 'boolean' ? val : defaults.indicators[key];
   }
+
+  for (const key of Object.keys(defaults.automations)) {
+    const val = incoming.automations?.[key];
+    merged.automations[key] = typeof val === 'boolean' ? val : defaults.automations[key];
+  }
+
+  merged.water.mustBeFull = typeof incoming.water?.mustBeFull === 'boolean'
+    ? incoming.water.mustBeFull
+    : defaults.water.mustBeFull;
 
   return merged;
 }
