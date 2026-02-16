@@ -209,10 +209,10 @@ socket.on('mqtt_status', (data) => {
   const statusEl = document.getElementById('status');
   if (data.connected) {
     statusEl.classList.add('connected');
-    statusEl.textContent = 'MQTT Connecté';
+    statusEl.textContent = 'MQTT ON';
   } else {
     statusEl.classList.remove('connected');
-    statusEl.textContent = 'MQTT Déconnecté';
+    statusEl.textContent = 'MQTT OFF';
   }
 });
 
