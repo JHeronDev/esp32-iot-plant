@@ -122,18 +122,73 @@ h2 {
 .auto-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
   font-size: 0.65rem;
   color: #94a3b8;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.auto-toggle input[type="checkbox"] {
-  accent-color: #10b981;
-  width: 16px;
-  height: 16px;
+.auto-toggle-label {
+  line-height: 1;
+}
+
+.auto-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.auto-switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
   cursor: pointer;
+  z-index: 2;
+}
+
+.auto-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #334155;
+  border: 1px solid rgba(148,163,184,0.4);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.auto-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.auto-switch input:checked + .auto-slider {
+  background: rgba(16,185,129,0.35);
+  border-color: rgba(16,185,129,0.8);
+}
+
+.auto-switch input:checked + .auto-slider::before {
+  transform: translateX(16px);
+  background: #10b981;
+}
+
+.auto-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.auto-switch input:disabled + .auto-slider {
+  opacity: 0.5;
 }
 
 .indicator {

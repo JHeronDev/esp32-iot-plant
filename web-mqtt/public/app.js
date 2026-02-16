@@ -16,7 +16,6 @@ const defaultSettings = {
     soil: { min: 30, max: 70 },
     air: { min: 30, max: 70 },
     temp: { min: 15, max: 30 },
-    pressure: { min: 990, max: 1030 },
     rssi: { min: -70, max: -50 }
   },
   indicators: {
@@ -30,9 +29,6 @@ const defaultSettings = {
     led: false,
     hum: false,
     fan: false
-  },
-  water: {
-    mustBeFull: true
   }
 };
 let settingsCache = JSON.parse(JSON.stringify(defaultSettings));
@@ -256,7 +252,7 @@ function update(id, val, min, max) {
   el.textContent = Math.round(val);
 }
 
-function updateWaterLevel(isFull, mustBeFull = true) {
+function updateWaterLevel(isFull) {
   const el = document.getElementById('water-level');
   const bubble = document.getElementById('water-bubble');
 
@@ -265,10 +261,10 @@ function updateWaterLevel(isFull, mustBeFull = true) {
   bubble.classList.remove('healthy', 'warning', 'critical');
   if (isFull === true) {
     el.textContent = 'Plein';
-    bubble.classList.add(mustBeFull ? 'healthy' : 'critical');
+    bubble.classList.add('healthy');
   } else if (isFull === false) {
     el.textContent = 'Vide';
-    bubble.classList.add(mustBeFull ? 'critical' : 'healthy');
+    bubble.classList.add('critical');
   } else {
     el.textContent = '-';
   }
@@ -293,11 +289,6 @@ function mergeLocalSettings(incoming = {}) {
   const incomingAutomations = incoming.automations || {};
   for (const key of Object.keys(merged.automations)) {
     if (typeof incomingAutomations[key] === 'boolean') merged.automations[key] = incomingAutomations[key];
-  }
-
-  const incomingWater = incoming.water || {};
-  if (typeof incomingWater.mustBeFull === 'boolean') {
-    merged.water.mustBeFull = incomingWater.mustBeFull;
   }
 
   return merged;
@@ -377,10 +368,6 @@ function collectSettingsFromUi() {
         min: parseThresholdInput('lux-min', settingsCache.thresholds.lux.min),
         max: parseThresholdInput('lux-max', settingsCache.thresholds.lux.max)
       },
-      soil: {
-        min: parseThresholdInput('soil-min', settingsCache.thresholds.soil.min),
-        max: parseThresholdInput('soil-max', settingsCache.thresholds.soil.max)
-      },
       air: {
         min: parseThresholdInput('air-min', settingsCache.thresholds.air.min),
         max: parseThresholdInput('air-max', settingsCache.thresholds.air.max)
@@ -403,9 +390,6 @@ function collectSettingsFromUi() {
       led: automationStates.led,
       hum: automationStates.hum,
       fan: automationStates.fan
-    },
-    water: {
-      mustBeFull: document.getElementById('water-must-be-full')?.value === 'true'
     }
   };
 }
@@ -419,11 +403,8 @@ function applySettingsToUi() {
   document.getElementById('air-max').value = settingsCache.thresholds.air.max;
   document.getElementById('temp-min').value = settingsCache.thresholds.temp.min;
   document.getElementById('temp-max').value = settingsCache.thresholds.temp.max;
-  document.getElementById('pressure-min').value = settingsCache.thresholds.pressure.min;
-  document.getElementById('pressure-max').value = settingsCache.thresholds.pressure.max;
   document.getElementById('rssi-min').value = settingsCache.thresholds.rssi.min;
   document.getElementById('rssi-max').value = settingsCache.thresholds.rssi.max;
-  document.getElementById('water-must-be-full').value = String(settingsCache.water.mustBeFull);
 
   setAutomationVisualState('led', settingsCache.automations.led);
   setAutomationVisualState('hum', settingsCache.automations.hum);
@@ -487,9 +468,9 @@ socket.on('telemetry', d => {
   update('soil', d.humidite_sol || 0, thresholds.soil.min, thresholds.soil.max);
   update('humidity', d.humidite_air || 0, thresholds.air.min, thresholds.air.max);
   update('temp', d.temperature || 0, thresholds.temp.min, thresholds.temp.max);
-  update('pressure', d.pressure || 0, thresholds.pressure.min, thresholds.pressure.max);
+  update('pressure', d.pressure || 0, 990, 1030);
   update('rssi', d.rssi || -100, thresholds.rssi.min, thresholds.rssi.max);
-  updateWaterLevel(typeof d.water_full === 'boolean' ? d.water_full : null, settingsCache.water.mustBeFull);
+  updateWaterLevel(typeof d.water_full === 'boolean' ? d.water_full : null);
   
   // Ajouter le nouveau point au graphique en temps réel
   if (chartData) {
