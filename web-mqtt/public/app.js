@@ -207,6 +207,7 @@ socket.on('connect', () => {
 
 socket.on('mqtt_status', (data) => {
   const statusEl = document.getElementById('status');
+  if (!statusEl) return;
   if (data.connected) {
     statusEl.classList.add('connected');
     statusEl.textContent = 'MQTT ON';
@@ -233,7 +234,7 @@ socket.on('disconnect', () => {
   const statusEl = document.getElementById('status');
   if (statusEl) {
     statusEl.classList.remove('connected');
-    statusEl.textContent = 'Déconnecté du serveur';
+    statusEl.textContent = 'MQTT OFF';
   }
 });
 
