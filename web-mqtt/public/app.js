@@ -41,75 +41,6 @@ const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 const LOGIN_COLLAPSED_CLASS = 'is-collapsed';
-let deferredInstallPrompt = null;
-
-function isStandaloneMode() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-function setInstallButtonVisibility(visible) {
-  const installBtn = document.getElementById('install-app-btn');
-  if (!installBtn) return;
-  installBtn.hidden = !visible;
-}
-
-function getInstallFallbackMessage() {
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  const isFirefox = /Firefox/i.test(ua);
-  const isCriOS = /CriOS/i.test(ua);
-  const isFxiOS = /FxiOS/i.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua) && !isCriOS && !isFxiOS;
-
-  if (isIOS && !isSafari) {
-    return 'Sur iOS, l\'installation PWA fonctionne via Safari. Ouvre ce site dans Safari puis Partager > "Sur l\'écran d\'accueil".';
-  }
-
-  if (isIOS || isSafari) {
-    return 'Sur iPhone/iPad: appuyez sur Partager puis "Sur l\'écran d\'accueil".';
-  }
-
-  if (isFirefox && !isAndroid) {
-    return 'Firefox desktop ne propose pas toujours l\'installation PWA comme Chrome/Edge. Utilise Chrome/Edge pour le prompt natif, ou Firefox Android pour "Ajouter à l\'écran d\'accueil".';
-  }
-
-  if (isAndroid) {
-    return 'Sur Android: ouvrez le menu du navigateur puis choisissez "Installer" ou "Ajouter à l\'écran d\'accueil".';
-  }
-
-  return 'Ouvrez le menu du navigateur puis choisissez "Installer l\'application".';
-}
-
-function refreshInstallButton() {
-  const installBtn = document.getElementById('install-app-btn');
-  if (!installBtn) return;
-
-  if (isStandaloneMode()) {
-    setInstallButtonVisibility(false);
-    return;
-  }
-
-  setInstallButtonVisibility(true);
-  installBtn.textContent = deferredInstallPrompt ? '📲 Installer' : '➕ Ajouter';
-}
-
-async function handleInstallClick() {
-  if (!deferredInstallPrompt) {
-    alert(getInstallFallbackMessage());
-    return;
-  }
-
-  deferredInstallPrompt.prompt();
-  const choiceResult = await deferredInstallPrompt.userChoice;
-
-  if (choiceResult.outcome === 'accepted') {
-    setInstallButtonVisibility(false);
-  }
-
-  deferredInstallPrompt = null;
-  refreshInstallButton();
-}
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -801,21 +732,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Charger le graphique au démarrage
 loadChart();
-
-window.addEventListener('beforeinstallprompt', (event) => {
-  event.preventDefault();
-  deferredInstallPrompt = event;
-  refreshInstallButton();
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  setInstallButtonVisibility(false);
-});
-
-window.addEventListener('DOMContentLoaded', () => {
-  refreshInstallButton();
-});
 
 if ('serviceWorker' in navigator) {
   let hasRefreshedForSw = false;
