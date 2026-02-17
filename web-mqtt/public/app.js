@@ -732,3 +732,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Charger le graphique au démarrage
 loadChart();
+
+if ('serviceWorker' in navigator) {
+  let hasRefreshedForSw = false;
+
+  const activateUpdate = (registration) => {
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  };
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hasRefreshedForSw) return;
+    hasRefreshedForSw = true;
+    window.location.reload();
+  });
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then((registration) => {
+        activateUpdate(registration);
+
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed') {
+              activateUpdate(registration);
+            }
+          });
+        });
+
+        setInterval(() => {
+          registration.update().catch(() => {});
+        }, 5 * 60 * 1000);
+      })
+      .catch((err) => {
+        console.error('Service worker non enregistré:', err);
+      });
+  });
+}

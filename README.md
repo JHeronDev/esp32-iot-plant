@@ -16,6 +16,7 @@ Système complet de surveillance et contrôle de plante connectée avec ESP32, M
 - Graphiques historiques interactifs
 - Indicateur de connexion et d'authentification JWT
 - Panneau Parametres pour ajuster les seuils capteurs
+- Grafana pour dashboards avancés (source InfluxDB préconfigurée)
 
 ### 💾 Backend
 - MQTT broker (Mosquitto)
@@ -153,6 +154,12 @@ Accéder à : **http://localhost:3000**
 - Liste utilisateurs : `GET /api/users`
 - Admin utilisateurs : `GET/POST/DELETE /api/admin/users` (header `x-admin-token`)
 - Santé serveur : `GET /health`
+
+### Grafana
+- URL : `http://localhost:3001`
+- Identifiants : `GRAFANA_USER` / `GRAFANA_PASSWORD` (voir `.env`)
+- Datasource : `InfluxDB-Plant` (provisionnée automatiquement)
+- Créer un dashboard et utiliser Flux sur le bucket `plant_data`
 
 ## 🎯 Seuils et Alertes
 

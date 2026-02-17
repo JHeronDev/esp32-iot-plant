@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Serre connectée">
+  <rect width="192" height="192" rx="40" fill="#1e293b"/>
+  <circle cx="96" cy="96" r="62" fill="#0f172a" stroke="#10b981" stroke-width="8"/>
+  <text x="96" y="112" text-anchor="middle" font-size="74" font-family="Segoe UI, Arial, sans-serif">🌱</text>
+</svg>
