@@ -57,10 +57,21 @@ function getInstallFallbackMessage() {
   const ua = navigator.userAgent || '';
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  const isFirefox = /Firefox/i.test(ua);
+  const isCriOS = /CriOS/i.test(ua);
+  const isFxiOS = /FxiOS/i.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua) && !isCriOS && !isFxiOS;
+
+  if (isIOS && !isSafari) {
+    return 'Sur iOS, l\'installation PWA fonctionne via Safari. Ouvre ce site dans Safari puis Partager > "Sur l\'écran d\'accueil".';
+  }
 
   if (isIOS || isSafari) {
     return 'Sur iPhone/iPad: appuyez sur Partager puis "Sur l\'écran d\'accueil".';
+  }
+
+  if (isFirefox && !isAndroid) {
+    return 'Firefox desktop ne propose pas toujours l\'installation PWA comme Chrome/Edge. Utilise Chrome/Edge pour le prompt natif, ou Firefox Android pour "Ajouter à l\'écran d\'accueil".';
   }
 
   if (isAndroid) {
