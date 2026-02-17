@@ -51,6 +51,23 @@ h1 { font-size: 1.5rem; font-weight: 600; }
   background: currentColor;
 }
 
+.install-btn {
+  padding: 0.45rem 0.8rem;
+  background: rgba(16,185,129,0.15);
+  border: 1px solid #10b981;
+  border-radius: 20px;
+  color: #10b981;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.install-btn:hover {
+  background: rgba(16,185,129,0.25);
+  transform: translateY(-1px);
+}
+
 main {
   flex: 1;
   display: flex;
@@ -611,6 +628,10 @@ canvas {
   header {
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+
+  .install-btn {
+    order: 3;
   }
 
   #login-panel {

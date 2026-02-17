@@ -41,6 +41,30 @@ const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 const LOGIN_COLLAPSED_CLASS = 'is-collapsed';
+let deferredInstallPrompt = null;
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function setInstallButtonVisibility(visible) {
+  const installBtn = document.getElementById('install-app-btn');
+  if (!installBtn) return;
+  installBtn.hidden = !visible;
+}
+
+async function handleInstallClick() {
+  if (!deferredInstallPrompt) return;
+
+  deferredInstallPrompt.prompt();
+  const choiceResult = await deferredInstallPrompt.userChoice;
+
+  if (choiceResult.outcome === 'accepted') {
+    setInstallButtonVisibility(false);
+  }
+
+  deferredInstallPrompt = null;
+}
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -732,6 +756,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Charger le graphique au démarrage
 loadChart();
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  setInstallButtonVisibility(true);
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  setInstallButtonVisibility(false);
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  setInstallButtonVisibility(!isStandaloneMode() && Boolean(deferredInstallPrompt));
+});
 
 if ('serviceWorker' in navigator) {
   let hasRefreshedForSw = false;
