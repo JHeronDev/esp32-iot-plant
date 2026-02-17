@@ -1,4 +1,4 @@
-const CACHE_NAME = 'plant-pwa-v3';
+const CACHE_NAME = 'plant-pwa-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -6,9 +6,7 @@ const APP_SHELL = [
   '/app.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg'
+  '/icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
