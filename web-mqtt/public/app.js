@@ -53,8 +53,41 @@ function setInstallButtonVisibility(visible) {
   installBtn.hidden = !visible;
 }
 
+function getInstallFallbackMessage() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+  if (isIOS || isSafari) {
+    return 'Sur iPhone/iPad: appuyez sur Partager puis "Sur l\'écran d\'accueil".';
+  }
+
+  if (isAndroid) {
+    return 'Sur Android: ouvrez le menu du navigateur puis choisissez "Installer" ou "Ajouter à l\'écran d\'accueil".';
+  }
+
+  return 'Ouvrez le menu du navigateur puis choisissez "Installer l\'application".';
+}
+
+function refreshInstallButton() {
+  const installBtn = document.getElementById('install-app-btn');
+  if (!installBtn) return;
+
+  if (isStandaloneMode()) {
+    setInstallButtonVisibility(false);
+    return;
+  }
+
+  setInstallButtonVisibility(true);
+  installBtn.textContent = deferredInstallPrompt ? '📲 Installer' : '➕ Ajouter';
+}
+
 async function handleInstallClick() {
-  if (!deferredInstallPrompt) return;
+  if (!deferredInstallPrompt) {
+    alert(getInstallFallbackMessage());
+    return;
+  }
 
   deferredInstallPrompt.prompt();
   const choiceResult = await deferredInstallPrompt.userChoice;
@@ -64,6 +97,7 @@ async function handleInstallClick() {
   }
 
   deferredInstallPrompt = null;
+  refreshInstallButton();
 }
 
 // === Fonctions de gestion d'authentification ===
@@ -760,7 +794,7 @@ loadChart();
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  setInstallButtonVisibility(true);
+  refreshInstallButton();
 });
 
 window.addEventListener('appinstalled', () => {
@@ -769,7 +803,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  setInstallButtonVisibility(!isStandaloneMode() && Boolean(deferredInstallPrompt));
+  refreshInstallButton();
 });
 
 if ('serviceWorker' in navigator) {
