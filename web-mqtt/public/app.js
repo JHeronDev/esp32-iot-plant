@@ -41,6 +41,28 @@ const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 const LOGIN_COLLAPSED_CLASS = 'is-collapsed';
+let deferredInstallPrompt = null;
+let installPromptTriggered = false;
+
+function attachNativeInstallPrompt() {
+  const triggerPrompt = async () => {
+    if (!deferredInstallPrompt || installPromptTriggered) return;
+    installPromptTriggered = true;
+
+    const promptEvent = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+
+    try {
+      promptEvent.prompt();
+      await promptEvent.userChoice;
+    } catch (_) {
+      // Certains contextes navigateur peuvent annuler le prompt
+    }
+  };
+
+  window.addEventListener('pointerdown', triggerPrompt, { once: true, capture: true });
+  window.addEventListener('keydown', triggerPrompt, { once: true, capture: true });
+}
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -733,6 +755,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Charger le graphique au démarrage
 loadChart();
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installPromptTriggered = false;
+  attachNativeInstallPrompt();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  installPromptTriggered = true;
+});
 
 if ('serviceWorker' in navigator) {
   let hasRefreshedForSw = false;
