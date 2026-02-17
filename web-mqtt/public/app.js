@@ -41,50 +41,6 @@ const BASE_SCALE = 1000; // Échelle de base au rechargement
 let maxScale = BASE_SCALE;
 const ZOOM_MULTIPLIER = 1.2; // 20% par clic
 const LOGIN_COLLAPSED_CLASS = 'is-collapsed';
-const INSTALL_PROMPT_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000;
-const INSTALL_PROMPT_LAST_SHOWN_KEY = 'install_prompt_last_shown';
-let deferredInstallPrompt = null;
-let hasInstallInteractionListener = false;
-
-function isStandaloneMode() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-function canShowInstallPrompt() {
-  if (isStandaloneMode()) return false;
-  const lastShown = Number(localStorage.getItem(INSTALL_PROMPT_LAST_SHOWN_KEY) || 0);
-  return !Number.isFinite(lastShown) || (Date.now() - lastShown) > INSTALL_PROMPT_COOLDOWN_MS;
-}
-
-async function showInstallPromptOnce() {
-  if (!deferredInstallPrompt || !canShowInstallPrompt()) return;
-
-  const promptEvent = deferredInstallPrompt;
-  deferredInstallPrompt = null;
-  localStorage.setItem(INSTALL_PROMPT_LAST_SHOWN_KEY, String(Date.now()));
-
-  try {
-    promptEvent.prompt();
-    await promptEvent.userChoice;
-  } catch (_) {
-    // Le navigateur peut refuser si le contexte n'est pas éligible
-  }
-}
-
-function attachInstallInteractionListener() {
-  if (hasInstallInteractionListener || !deferredInstallPrompt) return;
-  hasInstallInteractionListener = true;
-
-  const trigger = () => {
-    window.removeEventListener('pointerdown', trigger, true);
-    window.removeEventListener('keydown', trigger, true);
-    hasInstallInteractionListener = false;
-    showInstallPromptOnce();
-  };
-
-  window.addEventListener('pointerdown', trigger, true);
-  window.addEventListener('keydown', trigger, true);
-}
 
 // === Fonctions de gestion d'authentification ===
 function setLoginError(msg) {
@@ -776,19 +732,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Charger le graphique au démarrage
 loadChart();
-
-window.addEventListener('beforeinstallprompt', (event) => {
-  event.preventDefault();
-  deferredInstallPrompt = event;
-  if (canShowInstallPrompt()) {
-    attachInstallInteractionListener();
-  }
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  localStorage.setItem(INSTALL_PROMPT_LAST_SHOWN_KEY, String(Date.now()));
-});
 
 if ('serviceWorker' in navigator) {
   let hasRefreshedForSw = false;
