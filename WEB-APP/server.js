@@ -19,6 +19,8 @@ const crypto = require('crypto');
 // const nodemailer = require('nodemailer');
 const { Pool } = require('pg');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
+const https = require('https');
+const fs = require('fs');
 
 // --- Environment & Core Config ----------------------------------------------
 // Parametres de base (surchargables par variables d'environnement).
@@ -84,7 +86,11 @@ const MIN_SEND_INTERVAL = 2000; // Envoi limité à un message toutes les 2 seco
 let sharedDeviceStates = { led: false, pump: false, fan: false };
 
 const app = express();
-const server = http.createServer(app);
+const options = {
+  key: fs.readFileSync('./key.pem'),
+  cert: fs.readFileSync('./cert.pem')
+};
+const server = https.createServer(options, app);
 const io = new Server(server, {
   cors: {
     origin: "*",
